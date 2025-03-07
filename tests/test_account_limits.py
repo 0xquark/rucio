@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import pytest
 
 from rucio.core import account_limit
+from rucio.common.exception import AccountNotFound
 
 
 @pytest.fixture
@@ -147,6 +147,14 @@ class TestAccountClient:
 
         assert limit == {rse1: 333}
         account_limit.delete_local_account_limit(account=account, rse_id=rse1_id)
+
+    def test_get_limits_nonexistent_account(self, rucio_client):
+        """ ACCOUNT_LIMIT (CLIENTS): Ensure get_limits fails for nonexistent accounts. """
+        nonexistent_account = "nonexistent_account_123"
+        with pytest.raises(AccountNotFound) as exc_info:
+            rucio_client.get_account_limits(account=nonexistent_account, rse_expression="", locality="local")
+
+        assert str(exc_info.value) == f"Account '{nonexistent_account}' does not exist."
 
     def test_set_local_account_limit(self, account, rucio_client, rse_factory):
         """ ACCOUNTLIMIT (CLIENTS): Set local account limit """

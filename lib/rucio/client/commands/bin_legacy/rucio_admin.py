@@ -38,7 +38,7 @@ from rucio.client.richclient import MAX_TRACEBACK_WIDTH, MIN_CONSOLE_WIDTH, CLIT
 from rucio.common.constants import RseAttr
 from rucio.common.exception import (
     ReplicaNotFound,
-    RSEOperationNotSupported,
+    RSEOperationNotSupported, AccountNotFound,
 )
 from rucio.common.extra import import_extras
 from rucio.common.utils import StoreAndDeprecateWarningAction, chunks, clean_pfns, construct_non_deterministic_pfn, extract_scope, get_bytes_value_from_string, parse_response, render_json, setup_logger, sizefmt
@@ -236,11 +236,20 @@ def get_limits(args, client, logger, console, spinner):
     Grant an identity access to an account.
 
     """
-    locality = args.locality.lower()
-    limits = client.get_account_limits(account=args.account, rse_expression=args.rse, locality=locality)
-    for rse in limits:
-        print('Quota on %s for %s : %s' % (rse, args.account, sizefmt(limits[rse], True)))
-    return SUCCESS
+    try:
+        locality = args.locality.lower()
+        limits = client.get_account_limits(account=args.account, rse_expression=args.rse, locality=locality)
+        for rse in limits:
+            print('Quota on %s for %s : %s' % (rse, args.account, sizefmt(limits[rse], True)))
+        return SUCCESS
+
+    except AccountNotFound as e:
+        logger.error(f"Validation Error: {e}")
+        return FAILURE
+
+    except Exception as e:
+        logger.error(f"An unexpected error occurred: {e}")
+        return FAILURE
 
 
 @exception_handler
