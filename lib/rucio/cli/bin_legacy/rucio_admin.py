@@ -590,7 +590,7 @@ def update_distance_rses(args, client, logger, console, spinner):
     """
     %(prog)s update-distance [options] SOURCE_RSE DEST_RSE
 
-    Update the existing distance entry between two RSEs.
+    Update the existing distance entry between two RSEs. The mandatory parameters are source, destination and distance or ranking.
     """
     params = {}
     if args.distance is not None:
@@ -607,12 +607,56 @@ def update_distance_rses(args, client, logger, console, spinner):
 @exception_handler
 def delete_distance_rses(args, client, logger, console, spinner):
     """
-    %(prog)s delete-distance [options] SOURCE_RSE DEST_RSE
+    %(prog)s delete-distance [options] [SOURCE_RSE] [DEST_RSE]
 
-    Update the existing distance entry between two RSEs.
+    Delete the distance between RSEs. If only one RSE is given with --all,
+    all its outgoing or incoming links will be deleted. If both RSEs are given
+    with --bidirectional, links in both directions will be deleted.
     """
-    client.delete_distance(args.source, args.destination)
-    print('Deleted distance information from %s to %s.' % (args.source, args.destination))
+    if not args.source and not args.destination:
+        print('Error: At least one RSE must be specified')
+        return FAILURE
+
+    if args.all:
+        if args.source and args.destination:
+            print('Error: --all cannot be used with both source and destination RSEs')
+            return FAILURE
+            
+        if args.source:
+            # Delete all outgoing links from source RSE
+            rses = client.list_rses()
+            for rse in rses:
+                try:
+                    distance = client.get_distance(args.source, rse['rse'])
+                    if distance:
+                        client.delete_distance(args.source, rse['rse'])
+                        print('Deleted distance information from %s to %s.' % (args.source, rse['rse']))
+                except:
+                    continue
+        elif args.destination:
+            # Delete all incoming links to destination RSE
+            rses = client.list_rses()
+            for rse in rses:
+                try:
+                    distance = client.get_distance(rse['rse'], args.destination)
+                    if distance:
+                        client.delete_distance(rse['rse'], args.destination)
+                        print('Deleted distance information from %s to %s.' % (rse['rse'], args.destination))
+                except:
+                    continue
+    else:
+        if not args.source or not args.destination:
+            print('Error: Both source and destination RSEs must be specified unless --all is used')
+            return FAILURE
+            
+        # Delete distance between specified RSEs
+        client.delete_distance(args.source, args.destination)
+        print('Deleted distance information from %s to %s.' % (args.source, args.destination))
+        
+        if args.bidirectional:
+            client.delete_distance(args.destination, args.source)
+            print('Deleted distance information from %s to %s.' % (args.destination, args.source))
+    
     return SUCCESS
 
 
@@ -1922,18 +1966,31 @@ def get_parser():
 
     # The delete_distance_rses command
     delete_distance_rses_parser = rse_subparser.add_parser('delete-distance',
-                                                           help='Delete the distance between a pair of RSEs. The mandatory parameters are source and destination.',
+                                                           help='Delete the distance between RSEs. If only one RSE is given with --all, '
+                                                                'all its outgoing or incoming links will be deleted. If both RSEs are given '
+                                                                'with --bidirectional, links in both directions will be deleted.',
                                                            formatter_class=argparse.RawDescriptionHelpFormatter,
                                                            epilog='Usage example\n'
                                                                   '"""""""""""""\n'
                                                                   '::\n'
                                                                   '\n'
                                                                   '    $ rucio-admin rse delete-distance JDOE_DATADISK JDOE_SCRATCHDISK\n'
-                                                                  '    Delete distance information from JDOE_DATADISK to JDOE_SCRATCHDISK:\n'
+                                                                  '    Delete distance information from JDOE_DATADISK to JDOE_SCRATCHDISK\n'
+                                                                  '\n'
+                                                                  '    $ rucio-admin rse delete-distance --all JDOE_DATADISK\n'
+                                                                  '    Delete all outgoing distances from JDOE_DATADISK\n'
+                                                                  '\n'
+                                                                  '    $ rucio-admin rse delete-distance --all --destination JDOE_DATADISK\n'
+                                                                  '    Delete all incoming distances to JDOE_DATADISK\n'
+                                                                  '\n'
+                                                                  '    $ rucio-admin rse delete-distance --bidirectional JDOE_DATADISK JDOE_SCRATCHDISK\n'
+                                                                  '    Delete distances between JDOE_DATADISK and JDOE_SCRATCHDISK in both directions\n'
                                                                   '\n')
     delete_distance_rses_parser.set_defaults(which='delete_distance_rses')
-    delete_distance_rses_parser.add_argument(dest='source', action='store', help='Source RSE name')
-    delete_distance_rses_parser.add_argument(dest='destination', action='store', help='Destination RSE name')
+    delete_distance_rses_parser.add_argument('--source', action='store', help='Source RSE name')
+    delete_distance_rses_parser.add_argument('--destination', action='store', help='Destination RSE name')
+    delete_distance_rses_parser.add_argument('--all', action='store_true', help='Delete all outgoing or incoming links when only one RSE is specified')
+    delete_distance_rses_parser.add_argument('--bidirectional', action='store_true', help='Delete distances in both directions when both RSEs are specified')
 
     # The get_distance_rses command
     get_distance_rses_parser = rse_subparser.add_parser('get-distance',
