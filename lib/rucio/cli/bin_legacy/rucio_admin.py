@@ -43,6 +43,7 @@ from rucio.common.exception import (
 from rucio.common.extra import import_extras
 from rucio.common.utils import StoreAndDeprecateWarningAction, chunks, clean_pfns, construct_non_deterministic_pfn, extract_scope, get_bytes_value_from_string, parse_response, render_json, setup_logger, sizefmt
 from rucio.rse import rsemanager as rsemgr
+from rucio.client.exportclient import ExportClient
 
 EXTRA_MODULES = import_extras(['argcomplete'])
 
@@ -624,38 +625,44 @@ def delete_distance_rses(args, client, logger, console, spinner):
             
         if args.source:
             # Delete all outgoing links from source RSE
-            rses = client.list_rses()
-            for rse in rses:
+            export_client = ExportClient()
+            data = export_client.export_data(distance=True)
+            distances = [d for d in data.get('distances', []) if d['src_rse'] == args.source]
+            for distance in distances:
                 try:
-                    distance = client.get_distance(args.source, rse['rse'])
-                    if distance:
-                        client.delete_distance(args.source, rse['rse'])
-                        print('Deleted distance information from %s to %s.' % (args.source, rse['rse']))
-                except:
-                    continue
+                    client.delete_distance(args.source, distance['dest_rse'])
+                    print('Deleted distance information from %s to %s.' % (args.source, distance['dest_rse']))
+                except Exception as e:
+                    print('Failed to delete distance from %s to %s: %s' % (args.source, distance['dest_rse'], str(e)))
         elif args.destination:
             # Delete all incoming links to destination RSE
-            rses = client.list_rses()
-            for rse in rses:
+            export_client = ExportClient()
+            data = export_client.export_data(distance=True)
+            distances = [d for d in data.get('distances', []) if d['dest_rse'] == args.destination]
+            for distance in distances:
                 try:
-                    distance = client.get_distance(rse['rse'], args.destination)
-                    if distance:
-                        client.delete_distance(rse['rse'], args.destination)
-                        print('Deleted distance information from %s to %s.' % (rse['rse'], args.destination))
-                except:
-                    continue
+                    client.delete_distance(distance['src_rse'], args.destination)
+                    print('Deleted distance information from %s to %s.' % (distance['src_rse'], args.destination))
+                except Exception as e:
+                    print('Failed to delete distance from %s to %s: %s' % (distance['src_rse'], args.destination, str(e)))
     else:
         if not args.source or not args.destination:
             print('Error: Both source and destination RSEs must be specified unless --all is used')
             return FAILURE
             
         # Delete distance between specified RSEs
-        client.delete_distance(args.source, args.destination)
-        print('Deleted distance information from %s to %s.' % (args.source, args.destination))
+        try:
+            client.delete_distance(args.source, args.destination)
+            print('Deleted distance information from %s to %s.' % (args.source, args.destination))
+        except Exception as e:
+            print('Failed to delete distance from %s to %s: %s' % (args.source, args.destination, str(e)))
         
         if args.bidirectional:
-            client.delete_distance(args.destination, args.source)
-            print('Deleted distance information from %s to %s.' % (args.destination, args.source))
+            try:
+                client.delete_distance(args.destination, args.source)
+                print('Deleted distance information from %s to %s.' % (args.destination, args.source))
+            except Exception as e:
+                print('Failed to delete distance from %s to %s: %s' % (args.destination, args.source, str(e)))
     
     return SUCCESS
 
