@@ -337,6 +337,108 @@ class TestBinRucio:
         print(out, err)
         assert 'RSE does not exist.' in err
 
+    def test_rse_delete_distance_bidi(self):
+        """CLIENT (ADMIN): Delete distance to RSE in both directions"""
+        # add RSEs
+        temprse1 = rse_name_generator()
+        cmd = 'rucio-admin rse add %s' % temprse1
+        exitcode, out, err = execute(cmd)
+        print(out, err)
+        assert exitcode == 0
+        temprse2 = rse_name_generator()
+        cmd = 'rucio-admin rse add %s' % temprse2
+        exitcode, out, err = execute(cmd)
+        print(out, err)
+        assert exitcode == 0
+
+        # add distances in both directions
+        cmd = 'rucio-admin rse add-distance --distance 1 --ranking 1 %s %s' % (temprse1, temprse2)
+        print(self.marker + cmd)
+        exitcode, out, err = execute(cmd)
+        print(out, err)
+        assert exitcode == 0
+        cmd = 'rucio-admin rse add-distance --distance 1 --ranking 1 %s %s' % (temprse2, temprse1)
+        print(self.marker + cmd)
+        exitcode, out, err = execute(cmd)
+        print(out, err)
+        assert exitcode == 0
+
+        # delete distances in both directions
+        cmd = 'rucio-admin rse delete-distance --bidi %s %s' % (temprse1, temprse2)
+        exitcode, out, err = execute(cmd)
+        print(out, err)
+        assert exitcode == 0
+        assert "Deleted distance information from %s to %s." % (temprse1, temprse2) in out
+        assert "Deleted distance information from %s to %s." % (temprse2, temprse1) in out
+
+    @pytest.mark.noparallel(reason='modifies RSE attributes')
+    def test_rse_delete_distance_sites(self):
+        """CLIENT (ADMIN): Delete distances between RSEs at different sites"""
+        # Create test sites and RSEs
+        site1 = "TEST_SITE_1"
+        site2 = "TEST_SITE_2"
+        
+        # Create RSEs for site1
+        rse1_site1 = rse_name_generator()
+        cmd = 'rucio-admin rse add %s' % rse1_site1
+        exitcode, out, err = execute(cmd)
+        assert exitcode == 0
+        cmd = 'rucio-admin rse set-attribute --key site --value %s %s' % (site1, rse1_site1)
+        exitcode, out, err = execute(cmd)
+        assert exitcode == 0
+
+        rse2_site1 = rse_name_generator()
+        cmd = 'rucio-admin rse add %s' % rse2_site1
+        exitcode, out, err = execute(cmd)
+        assert exitcode == 0
+        cmd = 'rucio-admin rse set-attribute --key site --value %s %s' % (site1, rse2_site1)
+        exitcode, out, err = execute(cmd)
+        assert exitcode == 0
+
+        # Create RSEs for site2
+        rse1_site2 = rse_name_generator()
+        cmd = 'rucio-admin rse add %s' % rse1_site2
+        exitcode, out, err = execute(cmd)
+        assert exitcode == 0
+        cmd = 'rucio-admin rse set-attribute --key site --value %s %s' % (site2, rse1_site2)
+        exitcode, out, err = execute(cmd)
+        assert exitcode == 0
+
+        rse2_site2 = rse_name_generator()
+        cmd = 'rucio-admin rse add %s' % rse2_site2
+        exitcode, out, err = execute(cmd)
+        assert exitcode == 0
+        cmd = 'rucio-admin rse set-attribute --key site --value %s %s' % (site2, rse2_site2)
+        exitcode, out, err = execute(cmd)
+        assert exitcode == 0
+
+        # Add distances between all RSEs
+        for src in [rse1_site1, rse2_site1]:
+            for dst in [rse1_site2, rse2_site2]:
+                cmd = 'rucio-admin rse add-distance --distance 1 --ranking 1 %s %s' % (src, dst)
+                exitcode, out, err = execute(cmd)
+                assert exitcode == 0
+
+        # Delete all distances between sites
+        cmd = 'rucio-admin rse delete-distance --all --bidi --sites %s %s' % (site1, site2)
+        exitcode, out, err = execute(cmd)
+        print(out, err)
+        assert exitcode == 0
+
+        # Verify all distances were deleted
+        for src in [rse1_site1, rse2_site1]:
+            for dst in [rse1_site2, rse2_site2]:
+                cmd = 'rucio-admin rse get-distance %s %s' % (src, dst)
+                exitcode, out, err = execute(cmd)
+                assert exitcode != 0  # Should fail as distance doesn't exist
+                assert 'Distance from %s to %s does not exist' % (src, dst) in err
+
+        # Test with non-existent site
+        cmd = 'rucio-admin rse delete-distance --all --bidi --sites NONEXISTENT_SITE %s' % site2
+        exitcode, out, err = execute(cmd)
+        assert exitcode != 0
+        assert 'No RSEs found for site NONEXISTENT_SITE' in err
+
     def test_upload(self):
         """CLIENT(USER): Upload"""
         tmp_val = rse_name_generator()
@@ -610,8 +712,7 @@ class TestBinRucio:
         cmd = 'rucio -v upload --legacy --rse {0} --scope {1} --expiration-date 2021----10-10-20:00:00 {2}'.format(self.def_rse, self.user, tmp_file)
         print(self.marker + cmd)
         exitcode, out, err = execute(cmd)
-        print(out)
-        print(err)
+        print(out, err)
         assert exitcode != 0
         assert "does not match format '%Y-%m-%d-%H:%M:%S'" in err
 

@@ -43,6 +43,7 @@ from rucio.common.exception import (
 from rucio.common.extra import import_extras
 from rucio.common.utils import StoreAndDeprecateWarningAction, chunks, clean_pfns, construct_non_deterministic_pfn, extract_scope, get_bytes_value_from_string, parse_response, render_json, setup_logger, sizefmt
 from rucio.rse import rsemanager as rsemgr
+from rucio.client.export import ExportClient
 
 EXTRA_MODULES = import_extras(['argcomplete'])
 
@@ -609,10 +610,52 @@ def delete_distance_rses(args, client, logger, console, spinner):
     """
     %(prog)s delete-distance [options] SOURCE_RSE DEST_RSE
 
-    Update the existing distance entry between two RSEs.
+    Delete the distance between a pair of RSEs.
+    With --all and --sites options, delete all distances between all RSEs at the given sites.
     """
-    client.delete_distance(args.source, args.destination)
-    print('Deleted distance information from %s to %s.' % (args.source, args.destination))
+    if args.sites:
+        # Get all RSEs for each site
+        export_client = ExportClient()
+        data = export_client.export_data(distance=True)
+        
+        # Find RSEs for each site
+        source_rses = []
+        dest_rses = []
+        
+        for rse_name, rse_data in data['rses'].items():
+            if 'site' in rse_data.get('attributes', {}):
+                if rse_data['attributes']['site'] == args.source:
+                    source_rses.append(rse_name)
+                elif rse_data['attributes']['site'] == args.destination:
+                    dest_rses.append(rse_name)
+        
+        if not source_rses:
+            print(f'No RSEs found for site {args.source}')
+            return FAILURE
+        if not dest_rses:
+            print(f'No RSEs found for site {args.destination}')
+            return FAILURE
+            
+        # Delete distances between all RSEs
+        for src in source_rses:
+            for dst in dest_rses:
+                try:
+                    client.delete_distance(src, dst)
+                    print(f'Deleted distance information from {src} to {dst}.')
+                    if args.bidi:
+                        client.delete_distance(dst, src)
+                        print(f'Deleted distance information from {dst} to {src}.')
+                except Exception as e:
+                    print(f'Error deleting distance between {src} and {dst}: {str(e)}')
+                    continue
+    else:
+        # Original behavior for single RSE pair
+        client.delete_distance(args.source, args.destination)
+        print(f'Deleted distance information from {args.source} to {args.destination}.')
+        if args.bidi:
+            client.delete_distance(args.destination, args.source)
+            print(f'Deleted distance information from {args.destination} to {args.source}.')
+    
     return SUCCESS
 
 
@@ -1930,10 +1973,16 @@ def get_parser():
                                                                   '\n'
                                                                   '    $ rucio-admin rse delete-distance JDOE_DATADISK JDOE_SCRATCHDISK\n'
                                                                   '    Delete distance information from JDOE_DATADISK to JDOE_SCRATCHDISK:\n'
+                                                                  '\n'
+                                                                  '    $ rucio-admin rse delete-distance --all --bidi --sites INFN-MILANO-ATLASC SWT2_CPB\n'
+                                                                  '    Delete all distance information between all RSEs at INFN-MILANO-ATLASC and SWT2_CPB:\n'
                                                                   '\n')
     delete_distance_rses_parser.set_defaults(which='delete_distance_rses')
-    delete_distance_rses_parser.add_argument(dest='source', action='store', help='Source RSE name')
-    delete_distance_rses_parser.add_argument(dest='destination', action='store', help='Destination RSE name')
+    delete_distance_rses_parser.add_argument('--all', action='store_true', help='Delete all distances for the given RSE(s)')
+    delete_distance_rses_parser.add_argument('--bidi', action='store_true', help='Delete distances in both directions')
+    delete_distance_rses_parser.add_argument('--sites', action='store_true', help='Treat arguments as site names instead of RSE names')
+    delete_distance_rses_parser.add_argument(dest='source', action='store', help='Source RSE name or site name if --sites is used')
+    delete_distance_rses_parser.add_argument(dest='destination', action='store', help='Destination RSE name or site name if --sites is used')
 
     # The get_distance_rses command
     get_distance_rses_parser = rse_subparser.add_parser('get-distance',
