@@ -43,7 +43,7 @@ from rucio.common.exception import (
 from rucio.common.extra import import_extras
 from rucio.common.utils import StoreAndDeprecateWarningAction, chunks, clean_pfns, construct_non_deterministic_pfn, extract_scope, get_bytes_value_from_string, parse_response, render_json, setup_logger, sizefmt
 from rucio.rse import rsemanager as rsemgr
-from rucio.client.export import ExportClient
+from rucio.client.exportclient import ExportClient
 
 EXTRA_MODULES = import_extras(['argcomplete'])
 
