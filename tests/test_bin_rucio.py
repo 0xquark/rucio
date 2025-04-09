@@ -323,7 +323,9 @@ class TestBinRucio:
         # Verify all outgoing distances were deleted
         cmd = 'rucio-admin rse get-distance --source %s --destination %s' % (temprse1, temprse3)
         exitcode, out, err = execute(cmd)
-        assert "No distance set" in out
+        print(out, err)
+        assert exitcode == 0
+        assert "No distance set from %s to %s" % (temprse1, temprse3) in out
 
         # Add distances again for next tests
         cmd = 'rucio-admin rse add-distance --distance 1 --ranking 1 %s %s' % (temprse1, temprse2)
@@ -344,7 +346,9 @@ class TestBinRucio:
         # Verify all incoming distances were deleted
         cmd = 'rucio-admin rse get-distance --source %s --destination %s' % (temprse2, temprse1)
         exitcode, out, err = execute(cmd)
-        assert "No distance set" in out
+        print(out, err)
+        assert exitcode == 0
+        assert "No distance set from %s to %s" % (temprse2, temprse1) in out
 
         # Add distances again for bidirectional test
         cmd = 'rucio-admin rse add-distance --distance 1 --ranking 1 %s %s' % (temprse1, temprse2)
@@ -362,10 +366,14 @@ class TestBinRucio:
         # Verify distances were deleted in both directions
         cmd = 'rucio-admin rse get-distance --source %s --destination %s' % (temprse1, temprse2)
         exitcode, out, err = execute(cmd)
-        assert "No distance set" in out
+        print(out, err)
+        assert exitcode == 0
+        assert "No distance set from %s to %s" % (temprse1, temprse2) in out
         cmd = 'rucio-admin rse get-distance --source %s --destination %s' % (temprse2, temprse1)
         exitcode, out, err = execute(cmd)
-        assert "No distance set" in out
+        print(out, err)
+        assert exitcode == 0
+        assert "No distance set from %s to %s" % (temprse2, temprse1) in out
 
     def test_upload(self):
         """CLIENT(USER): Upload"""

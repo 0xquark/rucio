@@ -627,24 +627,26 @@ def delete_distance_rses(args, client, logger, console, spinner):
             # Delete all outgoing links from source RSE
             export_client = ExportClient()
             data = export_client.export_data(distance=True)
-            distances = [d for d in data.get('distances', []) if d['src_rse'] == args.source]
-            for distance in distances:
-                try:
-                    client.delete_distance(args.source, distance['dest_rse'])
-                    print('Deleted distance information from %s to %s.' % (args.source, distance['dest_rse']))
-                except Exception as e:
-                    print('Failed to delete distance from %s to %s: %s' % (args.source, distance['dest_rse'], str(e)))
+            distances = data.get('distances', {})
+            if args.source in distances:
+                for dest_rse in distances[args.source]:
+                    try:
+                        client.delete_distance(args.source, dest_rse)
+                        print('Deleted distance information from %s to %s.' % (args.source, dest_rse))
+                    except Exception as e:
+                        print('Failed to delete distance from %s to %s: %s' % (args.source, dest_rse, str(e)))
         elif args.destination:
             # Delete all incoming links to destination RSE
             export_client = ExportClient()
             data = export_client.export_data(distance=True)
-            distances = [d for d in data.get('distances', []) if d['dest_rse'] == args.destination]
-            for distance in distances:
-                try:
-                    client.delete_distance(distance['src_rse'], args.destination)
-                    print('Deleted distance information from %s to %s.' % (distance['src_rse'], args.destination))
-                except Exception as e:
-                    print('Failed to delete distance from %s to %s: %s' % (distance['src_rse'], args.destination, str(e)))
+            distances = data.get('distances', {})
+            for src_rse, dests in distances.items():
+                if args.destination in dests:
+                    try:
+                        client.delete_distance(src_rse, args.destination)
+                        print('Deleted distance information from %s to %s.' % (src_rse, args.destination))
+                    except Exception as e:
+                        print('Failed to delete distance from %s to %s: %s' % (src_rse, args.destination, str(e)))
     else:
         if not args.source or not args.destination:
             print('Error: Both source and destination RSEs must be specified unless --all is used')
