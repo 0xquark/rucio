@@ -34,6 +34,7 @@ from tabulate import tabulate
 
 from rucio import version
 from rucio.cli.utils import exception_handler, get_client, setup_gfal2_logger, signal_handler
+from rucio.client.exportclient import ExportClient
 from rucio.client.richclient import MAX_TRACEBACK_WIDTH, MIN_CONSOLE_WIDTH, CLITheme, generate_table, get_cli_config, get_pager, print_output, setup_rich_logger
 from rucio.common.constants import RseAttr
 from rucio.common.exception import (
@@ -43,7 +44,6 @@ from rucio.common.exception import (
 from rucio.common.extra import import_extras
 from rucio.common.utils import StoreAndDeprecateWarningAction, chunks, clean_pfns, construct_non_deterministic_pfn, extract_scope, get_bytes_value_from_string, parse_response, render_json, setup_logger, sizefmt
 from rucio.rse import rsemanager as rsemgr
-from rucio.client.exportclient import ExportClient
 
 EXTRA_MODULES = import_extras(['argcomplete'])
 
@@ -622,7 +622,7 @@ def delete_distance_rses(args, client, logger, console, spinner):
         if args.source and args.destination:
             print('Error: --all cannot be used with both source and destination RSEs')
             return FAILURE
-            
+
         if args.source:
             # Delete all outgoing links from source RSE
             export_client = ExportClient()
@@ -651,21 +651,21 @@ def delete_distance_rses(args, client, logger, console, spinner):
         if not args.source or not args.destination:
             print('Error: Both source and destination RSEs must be specified unless --all is used')
             return FAILURE
-            
+
         # Delete distance between specified RSEs
         try:
             client.delete_distance(args.source, args.destination)
             print('Deleted distance information from %s to %s.' % (args.source, args.destination))
         except Exception as e:
             print('Failed to delete distance from %s to %s: %s' % (args.source, args.destination, str(e)))
-        
+
         if args.bidirectional:
             try:
                 client.delete_distance(args.destination, args.source)
                 print('Deleted distance information from %s to %s.' % (args.destination, args.source))
             except Exception as e:
                 print('Failed to delete distance from %s to %s: %s' % (args.destination, args.source, str(e)))
-    
+
     return SUCCESS
 
 
