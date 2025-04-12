@@ -383,7 +383,7 @@ class TestBinRucio:
         cmd = 'rucio-admin rse add %s' % rse1_site1
         exitcode, out, err = execute(cmd)
         assert exitcode == 0
-        cmd = 'rucio-admin rse set-attribute --key site --value %s %s' % (site1, rse1_site1)
+        cmd = 'rucio rse attribute add --rse %s --key site --value %s' % (rse1_site1, site1)
         exitcode, out, err = execute(cmd)
         assert exitcode == 0
 
@@ -391,7 +391,7 @@ class TestBinRucio:
         cmd = 'rucio-admin rse add %s' % rse2_site1
         exitcode, out, err = execute(cmd)
         assert exitcode == 0
-        cmd = 'rucio-admin rse set-attribute --key site --value %s %s' % (site1, rse2_site1)
+        cmd = 'rucio rse attribute add --rse %s --key site --value %s' % (rse2_site1, site1)
         exitcode, out, err = execute(cmd)
         assert exitcode == 0
 
@@ -400,7 +400,7 @@ class TestBinRucio:
         cmd = 'rucio-admin rse add %s' % rse1_site2
         exitcode, out, err = execute(cmd)
         assert exitcode == 0
-        cmd = 'rucio-admin rse set-attribute --key site --value %s %s' % (site2, rse1_site2)
+        cmd = 'rucio rse attribute add --rse %s --key site --value %s' % (rse1_site2, site2)
         exitcode, out, err = execute(cmd)
         assert exitcode == 0
 
@@ -408,7 +408,7 @@ class TestBinRucio:
         cmd = 'rucio-admin rse add %s' % rse2_site2
         exitcode, out, err = execute(cmd)
         assert exitcode == 0
-        cmd = 'rucio-admin rse set-attribute --key site --value %s %s' % (site2, rse2_site2)
+        cmd = 'rucio rse attribute add --rse %s --key site --value %s' % (rse2_site2, site2)
         exitcode, out, err = execute(cmd)
         assert exitcode == 0
 
@@ -420,7 +420,7 @@ class TestBinRucio:
                 assert exitcode == 0
 
         # Delete all distances between sites
-        cmd = 'rucio-admin rse delete-distance --all --bidi --sites %s %s' % (site1, site2)
+        cmd = 'rucio-admin rse delete-distance --sites %s %s' % (site1, site2)
         exitcode, out, err = execute(cmd)
         print(out, err)
         assert exitcode == 0
@@ -433,11 +433,196 @@ class TestBinRucio:
                 assert exitcode != 0  # Should fail as distance doesn't exist
                 assert 'Distance from %s to %s does not exist' % (src, dst) in err
 
+        # Test bidirectional deletion
+        # First add distances in both directions
+        for src in [rse1_site1, rse2_site1]:
+            for dst in [rse1_site2, rse2_site2]:
+                cmd = 'rucio-admin rse add-distance --distance 1 --ranking 1 %s %s' % (src, dst)
+                exitcode, out, err = execute(cmd)
+                assert exitcode == 0
+                # Add reverse distance
+                cmd = 'rucio-admin rse add-distance --distance 1 --ranking 1 %s %s' % (dst, src)
+                exitcode, out, err = execute(cmd)
+                assert exitcode == 0
+
+        # Delete all distances between sites in both directions
+        cmd = 'rucio-admin rse delete-distance --sites --bidirectional %s %s' % (site1, site2)
+        exitcode, out, err = execute(cmd)
+        print(out, err)
+        assert exitcode == 0
+
+        # Verify all distances were deleted in both directions
+        for src in [rse1_site1, rse2_site1]:
+            for dst in [rse1_site2, rse2_site2]:
+                # Check forward direction
+                cmd = 'rucio-admin rse get-distance %s %s' % (src, dst)
+                exitcode, out, err = execute(cmd)
+                assert exitcode != 0
+                assert 'Distance from %s to %s does not exist' % (src, dst) in err
+                # Check reverse direction
+                cmd = 'rucio-admin rse get-distance %s %s' % (dst, src)
+                exitcode, out, err = execute(cmd)
+                assert exitcode != 0
+                assert 'Distance from %s to %s does not exist' % (dst, src) in err
+
         # Test with non-existent site
-        cmd = 'rucio-admin rse delete-distance --all --bidi --sites NONEXISTENT_SITE %s' % site2
+        cmd = 'rucio-admin rse delete-distance --sites NONEXISTENT_SITE %s' % site2
         exitcode, out, err = execute(cmd)
         assert exitcode != 0
         assert 'No RSEs found for site NONEXISTENT_SITE' in err
+
+    @pytest.mark.noparallel(reason='modifies RSE connectivity')
+    def test_rse_delete_all_outgoing_links(self):
+        """CLIENT (ADMIN): Delete all outgoing links from an RSE"""
+        # Create test RSEs
+        source_rse = rse_name_generator()
+        cmd = 'rucio-admin rse add %s' % source_rse
+        exitcode, out, err = execute(cmd)
+        assert exitcode == 0
+
+        # Create several destination RSEs
+        dest_rses = []
+        for i in range(3):
+            dest_rse = rse_name_generator()
+            cmd = 'rucio-admin rse add %s' % dest_rse
+            exitcode, out, err = execute(cmd)
+            assert exitcode == 0
+            dest_rses.append(dest_rse)
+
+        # Add distances from source to all destinations
+        for dest_rse in dest_rses:
+            cmd = 'rucio-admin rse add-distance --distance 1 --ranking 1 %s %s' % (source_rse, dest_rse)
+            exitcode, out, err = execute(cmd)
+            assert exitcode == 0
+
+        # Delete all outgoing links
+        cmd = 'rucio-admin rse delete-distance --all %s' % source_rse
+        exitcode, out, err = execute(cmd)
+        print(out, err)
+        assert exitcode == 0
+
+        # Verify all distances were deleted
+        for dest_rse in dest_rses:
+            cmd = 'rucio-admin rse get-distance %s %s' % (source_rse, dest_rse)
+            exitcode, out, err = execute(cmd)
+            assert exitcode != 0  # Should fail as distance doesn't exist
+            assert 'Distance from %s to %s does not exist' % (source_rse, dest_rse) in err
+
+    @pytest.mark.noparallel(reason='modifies RSE connectivity')
+    def test_rse_delete_all_incoming_links(self):
+        """CLIENT (ADMIN): Delete all incoming links to an RSE"""
+        # Create test RSEs
+        dest_rse = rse_name_generator()
+        cmd = 'rucio-admin rse add %s' % dest_rse
+        exitcode, out, err = execute(cmd)
+        assert exitcode == 0
+
+        # Create several source RSEs
+        source_rses = []
+        for i in range(3):
+            source_rse = rse_name_generator()
+            cmd = 'rucio-admin rse add %s' % source_rse
+            exitcode, out, err = execute(cmd)
+            assert exitcode == 0
+            source_rses.append(source_rse)
+
+        # Add distances from all sources to destination
+        for source_rse in source_rses:
+            cmd = 'rucio-admin rse add-distance --distance 1 --ranking 1 %s %s' % (source_rse, dest_rse)
+            exitcode, out, err = execute(cmd)
+            assert exitcode == 0
+
+        # Delete all incoming links
+        cmd = 'rucio-admin rse delete-distance --all --destination %s' % dest_rse
+        exitcode, out, err = execute(cmd)
+        print(out, err)
+        assert exitcode == 0
+
+        # Verify all distances were deleted
+        for source_rse in source_rses:
+            cmd = 'rucio-admin rse get-distance %s %s' % (source_rse, dest_rse)
+            exitcode, out, err = execute(cmd)
+            assert exitcode != 0  # Should fail as distance doesn't exist
+            assert 'Distance from %s to %s does not exist' % (source_rse, dest_rse) in err
+
+    @pytest.mark.noparallel(reason='modifies RSE connectivity')
+    def test_rse_delete_distance_site_all_links(self):
+        """CLIENT (ADMIN): Delete all outgoing/incoming links from/to a site"""
+        # Create two test sites
+        site1 = "TEST_SITE_1"
+        site2 = "TEST_SITE_2"
+        
+        # Create RSEs for site1
+        rses_site1 = []
+        for i in range(2):
+            rse = rse_name_generator()
+            cmd = 'rucio-admin rse add %s' % rse
+            exitcode, out, err = execute(cmd)
+            assert exitcode == 0
+            cmd = 'rucio rse attribute add --rse %s --key site --value %s' % (rse, site1)
+            exitcode, out, err = execute(cmd)
+            assert exitcode == 0
+            rses_site1.append(rse)
+
+        # Create RSEs for site2
+        rses_site2 = []
+        for i in range(2):
+            rse = rse_name_generator()
+            cmd = 'rucio-admin rse add %s' % rse
+            exitcode, out, err = execute(cmd)
+            assert exitcode == 0
+            cmd = 'rucio rse attribute add --rse %s --key site --value %s' % (rse, site2)
+            exitcode, out, err = execute(cmd)
+            assert exitcode == 0
+            rses_site2.append(rse)
+            
+        # Create an unrelated RSE
+        other_rse = rse_name_generator()
+        cmd = 'rucio-admin rse add %s' % other_rse
+        exitcode, out, err = execute(cmd)
+        assert exitcode == 0
+
+        # Add distances from site1 to site2 RSEs and other_rse
+        for src in rses_site1:
+            for dst in rses_site2 + [other_rse]:
+                cmd = 'rucio-admin rse add-distance --distance 1 --ranking 1 %s %s' % (src, dst)
+                exitcode, out, err = execute(cmd)
+                assert exitcode == 0
+
+        # Delete all outgoing links from the site
+        cmd = 'rucio-admin rse delete-distance --sites --all %s' % site1
+        exitcode, out, err = execute(cmd)
+        print(out, err)
+        assert exitcode == 0
+
+        # Verify all outgoing links were deleted
+        for src in rses_site1:
+            for dst in rses_site2 + [other_rse]:
+                cmd = 'rucio-admin rse get-distance %s %s' % (src, dst)
+                exitcode, out, err = execute(cmd)
+                assert exitcode != 0
+                assert 'Distance from %s to %s does not exist' % (src, dst) in err
+
+        # Add distances to site2 from site1 RSEs and other_rse
+        for dst in rses_site2:
+            for src in rses_site1 + [other_rse]:
+                cmd = 'rucio-admin rse add-distance --distance 1 --ranking 1 %s %s' % (src, dst)
+                exitcode, out, err = execute(cmd)
+                assert exitcode == 0
+
+        # Delete all incoming links to the site
+        cmd = 'rucio-admin rse delete-distance --sites --all --destination %s' % site2
+        exitcode, out, err = execute(cmd)
+        print(out, err)
+        assert exitcode == 0
+
+        # Verify all incoming links were deleted
+        for dst in rses_site2:
+            for src in rses_site1 + [other_rse]:
+                cmd = 'rucio-admin rse get-distance %s %s' % (src, dst)
+                exitcode, out, err = execute(cmd)
+                assert exitcode != 0
+                assert 'Distance from %s to %s does not exist' % (src, dst) in err
 
     def test_upload(self):
         """CLIENT(USER): Upload"""
