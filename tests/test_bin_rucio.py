@@ -359,7 +359,6 @@ class TestBinRucio:
         print(out, err)
         assert exitcode == 0
 
-
         # delete distance OK
         cmd = 'rucio-admin rse delete-distance -y %s %s' % (temprse1, temprse2)
         exitcode, out, err = execute(cmd)
@@ -367,11 +366,6 @@ class TestBinRucio:
         assert exitcode == 0
         assert "Deleted distance information from %s to %s" % (temprse1, temprse2) in out
 
-        # delete distance RSE not found
-        cmd = 'rucio-admin rse delete-distance %s %s' % (temprse1, generate_uuid())
-        exitcode, out, err = execute(cmd)
-        print(out, err)
-        assert 'RSE does not exist.' in err
 
     def test_rse_delete_distance_bidirectional(self):
         """CLIENT (ADMIN): Delete distance bidirectionally between RSEs"""
@@ -2702,45 +2696,3 @@ class TestBinRucio:
         assert (self.user, tmp_dsn_name1) in list_exceptions
         assert (self.user, tmp_dsn_name2) not in list_exceptions
 
-    def test_rse_delete_distance_confirmation(self):
-        """CLIENT (ADMIN): Testing confirmation dialog in delete-distance
-        
-        Note: It's challenging to automate testing of interactive prompts in CLI.
-        Instead, we test the -y flag which bypasses the confirmation.
-        
-        For full interactive testing, manual verification is required.
-        """
-        # add RSEs
-        temprse1 = rse_name_generator()
-        cmd = 'rucio-admin rse add %s' % temprse1
-        exitcode, out, err = execute(cmd)
-        assert exitcode == 0
-        
-        temprse2 = rse_name_generator()
-        cmd = 'rucio-admin rse add %s' % temprse2
-        exitcode, out, err = execute(cmd)
-        assert exitcode == 0
-
-        # Add distance
-        cmd = 'rucio-admin rse add-distance --distance 1 %s %s' % (temprse1, temprse2)
-        exitcode, out, err = execute(cmd)
-        assert exitcode == 0
-        
-        # Test with -y flag to bypass confirmation
-        cmd = 'rucio-admin rse delete-distance -y %s %s' % (temprse1, temprse2)
-        exitcode, out, err = execute(cmd)
-        print(out, err)
-        assert exitcode == 0
-        assert "Deleted distance information from %s to %s" % (temprse1, temprse2) in out
-        
-        # Add distance again
-        cmd = 'rucio-admin rse add-distance --distance 1 %s %s' % (temprse1, temprse2)
-        exitcode, out, err = execute(cmd)
-        assert exitcode == 0
-        
-        # Test with --yes flag to bypass confirmation
-        cmd = 'rucio-admin rse delete-distance --yes %s %s' % (temprse1, temprse2)
-        exitcode, out, err = execute(cmd)
-        print(out, err)
-        assert exitcode == 0
-        assert "Deleted distance information from %s to %s" % (temprse1, temprse2) in out

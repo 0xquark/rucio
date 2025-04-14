@@ -663,7 +663,7 @@ def delete_distance_rses(args, client, logger, console, spinner):
             except Exception as e:
                 logger.error("Error retrieving RSEs for site %s: %s" % (args.destination, str(e)))
                 return FAILURE
-    elif args.source and not args.destination:
+    elif args.source:
         # Delete all outgoing links from source
         try:
             client.get_rse(args.source)
@@ -680,7 +680,7 @@ def delete_distance_rses(args, client, logger, console, spinner):
                 return FAILURE
         # For outgoing links, we need all possible destinations
         dst_rses = [rse['rse'] for rse in client.list_rses()]
-    elif not args.source and args.destination:
+    elif args.destination:
         # Delete all incoming links to destination
         try:
             client.get_rse(args.destination)
@@ -2061,16 +2061,16 @@ def get_parser():
                                                                   '    $ rucio-admin rse delete-distance JDOE_DATADISK JDOE_SCRATCHDISK\n'
                                                                   '\n'
                                                                   '    # Delete distance between two sites (all RSEs at each site)\n'
-                                                                  '    $ rucio-admin rse delete-distance SITE_A SITE_B\n'
+                                                                  '    $ rucio-admin rse delete-distance JDOE_DATADISK_SITE_A JDOE_SCRATCHDISK_SITE_B\n'
                                                                   '\n'
                                                                   '    # Delete distance bidirectionally between two sites\n'
-                                                                  '    $ rucio-admin rse delete-distance --bidirectional SITE_A SITE_B\n'
+                                                                  '    $ rucio-admin rse delete-distance --bidirectional JDOE_DATADISK_SITE_A JDOE_SCRATCHDISK_SITE_B\n'
                                                                   '\n'
                                                                   '    # Delete all outgoing links from an RSE\n'
-                                                                  '    $ rucio-admin rse delete-distance --src RSE_1\n'
+                                                                  '    $ rucio-admin rse delete-distance --src JDOE_DATADISK\n'
                                                                   '\n'
                                                                   '    # Delete all incoming links to an RSE\n'
-                                                                  '    $ rucio-admin rse delete-distance --dest RSE_2\n'
+                                                                  '    $ rucio-admin rse delete-distance --dest JDOE_SCRATCHDISK\n'
                                                                   '\n')
     delete_distance_rses_parser.set_defaults(which='delete_distance_rses')
     
