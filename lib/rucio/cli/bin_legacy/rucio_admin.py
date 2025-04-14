@@ -631,6 +631,9 @@ def delete_distance_rses(args, client, logger, console, spinner):
     if not (args.source or args.destination):
         logger.error("Either source, destination, or both must be specified")
         return FAILURE
+
+    args.source = args.source_flag if hasattr(args, 'src_flag') and args.src_flag else args.source
+    args.destination = args.destination_flag if hasattr(args, 'dest_flag') and args.dest_flag else args.destination
     
     src_rses = []
     dst_rses = []
@@ -2080,8 +2083,8 @@ def get_parser():
     
     # Create a mutually exclusive group for source/destination specification
     src_dest_group = delete_distance_rses_parser.add_mutually_exclusive_group()
-    src_dest_group.add_argument('--src', dest='source', action='store', help='Source RSE or site name (for deleting all outgoing links)')
-    src_dest_group.add_argument('--dest', dest='destination', action='store', help='Destination RSE or site name (for deleting all incoming links)')
+    src_dest_group.add_argument('--src', dest='src_flag', action='store', help='Source RSE or site name (for deleting all outgoing links)')
+    src_dest_group.add_argument('--dest', dest='dest_flag', action='store', help='Destination RSE or site name (for deleting all incoming links)')
     
     delete_distance_rses_parser.add_argument('source', nargs='?', help='Source RSE or site name')
     delete_distance_rses_parser.add_argument('destination', nargs='?', help='Destination RSE or site name')
