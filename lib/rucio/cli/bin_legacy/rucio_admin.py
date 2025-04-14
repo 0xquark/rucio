@@ -628,6 +628,10 @@ def delete_distance_rses(args, client, logger, console, spinner):
     Arguments support both RSE names and site names. If a site name is provided,
     the command will operate on all RSEs belonging to that site.
     """
+    if not (args.source or args.destination):
+        logger.error("Either source, destination, or both must be specified")
+        return FAILURE
+    
     src_rses = []
     dst_rses = []
     distances_to_delete = []
