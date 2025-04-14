@@ -2082,9 +2082,9 @@ def get_parser():
     src_dest_group = delete_distance_rses_parser.add_mutually_exclusive_group()
     src_dest_group.add_argument('--src', dest='source', action='store', help='Source RSE or site name (for deleting all outgoing links)')
     src_dest_group.add_argument('--dest', dest='destination', action='store', help='Destination RSE or site name (for deleting all incoming links)')
-    src_dest_group.add_argument('source', nargs='?', action='store', help='Source RSE or site name')
     
-    delete_distance_rses_parser.add_argument('destination', nargs='?', action='store', help='Destination RSE or site name')
+    delete_distance_rses_parser.add_argument('source', nargs='?', help='Source RSE or site name')
+    delete_distance_rses_parser.add_argument('destination', nargs='?', help='Destination RSE or site name')
     delete_distance_rses_parser.add_argument('--bidirectional', '--bidi', action='store_true', help='Delete distances in both directions')
     delete_distance_rses_parser.add_argument('-y', '--yes', action='store_true', help='Automatically confirm deletion')
 
