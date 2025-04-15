@@ -632,8 +632,8 @@ def delete_distance_rses(args, client, logger, console, spinner):
         logger.error("Either source, destination, or both must be specified")
         return FAILURE
 
-    args.source = args.source_flag if hasattr(args, 'src_flag') and args.src_flag else args.source
-    args.destination = args.destination_flag if hasattr(args, 'dest_flag') and args.dest_flag else args.destination
+    args.source = args.src_flag if hasattr(args, 'src_flag') and args.src_flag else args.source
+    args.destination = args.dest_flag if hasattr(args, 'dest_flag') and args.dest_flag else args.destination
     
     src_rses = []
     dst_rses = []
