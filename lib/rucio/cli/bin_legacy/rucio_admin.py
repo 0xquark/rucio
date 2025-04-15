@@ -628,12 +628,16 @@ def delete_distance_rses(args, client, logger, console, spinner):
     Arguments support both RSE names and site names. If a site name is provided,
     the command will operate on all RSEs belonging to that site.
     """
+    # First assign src_flag and dest_flag to source and destination if provided
+    if hasattr(args, 'src_flag') and args.src_flag:
+        args.source = args.src_flag
+        
+    if hasattr(args, 'dest_flag') and args.dest_flag:
+        args.destination = args.dest_flag
+        
     if not (args.source or args.destination):
         logger.error("Either source, destination, or both must be specified")
         return FAILURE
-
-    args.source = args.src_flag if hasattr(args, 'src_flag') and args.src_flag else args.source
-    args.destination = args.dest_flag if hasattr(args, 'dest_flag') and args.dest_flag else args.destination
     
     src_rses = []
     dst_rses = []
