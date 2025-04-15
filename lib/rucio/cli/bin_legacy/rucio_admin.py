@@ -704,9 +704,6 @@ def delete_distance_rses(args, client, logger, console, spinner):
                 return FAILURE
         # For incoming links, we need all possible sources
         src_rses = [rse['rse'] for rse in client.list_rses()]
-    else:
-        logger.error("Either source, destination, or both must be specified")
-        return FAILURE
     
     # Build list of distances to delete
     for src in src_rses:
