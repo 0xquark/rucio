@@ -741,7 +741,11 @@ def delete_distance_rses(args, client, logger, console, spinner):
             client.delete_distance(src, dst)
             print(f"Deleted distance information from {src} to {dst}")
         except Exception as e:
-            logger.error(f"Failed to delete distance from {src} to {dst}: {str(e)}")
+            error_str: str = str(e)
+            if "NoDistance" in error_str or "RSENotFound" in error_str:
+                logger.error(f"Distance from {src} to {dst} not found")
+            else:
+                logger.error(f"Failed to delete distance from {src} to {dst}: {error_str}")
     
     return SUCCESS
 
