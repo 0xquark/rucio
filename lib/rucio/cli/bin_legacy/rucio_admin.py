@@ -629,7 +629,7 @@ def delete_distance_rses(args, client, logger, console, spinner):
     Arguments support both RSE names and site names. If a site name is provided,
     the command will operate on all RSEs belonging to that site.
     """
-    # First assign src_flag and dest_flag to source and destination if provided
+    # First assign src_flag and dest_flag to source and destination
     if hasattr(args, 'src_flag') and args.src_flag:
         args.source = args.src_flag
         
@@ -640,104 +640,122 @@ def delete_distance_rses(args, client, logger, console, spinner):
         logger.error("Either source, destination, or both must be specified")
         return FAILURE
     
-    src_rses = []
-    dst_rses = []
-    distances_to_delete = []
-    
-    # Check which arguments were provided and how to interpret them
-    if args.source:
-        # Try as RSE first
-        try:
-            client.get_rse(args.source)
-            src_rses = [args.source]
-        except Exception:
-            # Not an RSE, try as site
-            try:
-                src_rses = [rse['rse'] for rse in client.list_rses("site=%s" % args.source)]
-                if not src_rses:
-                    logger.error("Source '%s' is neither a valid RSE nor a site with RSEs" % args.source)
-                    return FAILURE
-            except Exception as e:
-                logger.error("Error retrieving RSEs for site %s: %s" % (args.source, str(e)))
-                return FAILURE
-                
-    if args.destination:
-        # Try as RSE first
-        try:
-            client.get_rse(args.destination)
-            dst_rses = [args.destination]
-        except Exception:
-            # Not an RSE, try as site
-            try:
-                dst_rses = [rse['rse'] for rse in client.list_rses("site=%s" % args.destination)]
-                if not dst_rses:
-                    logger.error("Destination '%s' is neither a valid RSE nor a site with RSEs" % args.destination)
-                    return FAILURE
-            except Exception as e:
-                logger.error("Error retrieving RSEs for site %s: %s" % (args.destination, str(e)))
-                return FAILURE
-                
-    # Use ExportClient to get all distances
-    export_client = ExportClient()
-    distances_data = export_client.export_data(distance=True)['distances']
-    
-    # Process based on what was provided
-    if args.source and args.destination:
-        # Both source and destination provided, find matches
-        for src_rse in src_rses:
-            for dst_rse in dst_rses:
-                if src_rse != dst_rse:  # Skip self-links
-                    # Check if this distance exists
-                    if src_rse in distances_data and dst_rse in distances_data[src_rse]:
-                        distances_to_delete.append((src_rse, dst_rse))
-                    
-                    # If bidirectional, also add reverse
-                    if args.bidirectional and dst_rse in distances_data and src_rse in distances_data[dst_rse]:
-                        distances_to_delete.append((dst_rse, src_rse))
-    elif args.source:
-        # Only source provided, find all outgoing links
-        for src_rse in src_rses:
-            if src_rse in distances_data:
-                for dst_rse in distances_data[src_rse]:
-                    distances_to_delete.append((src_rse, dst_rse))
-    elif args.destination:
-        # Only destination provided, find all incoming links
-        for dst_rse in dst_rses:
-            for src_rse, dest_dict in distances_data.items():
-                if dst_rse in dest_dict:
-                    distances_to_delete.append((src_rse, dst_rse))
-    
-    # De-duplicate the list (in case of bidirectional with same source and destination)
-    distances_to_delete = list(set(distances_to_delete))
-    
-    # Display the distances that will be deleted and ask for confirmation
-    if len(distances_to_delete) == 0:
-        logger.error("No distances to delete")
-        return FAILURE
-    
-    print("The following distances will be deleted:")
-    for src, dst in distances_to_delete:
-        print(f"  {src} → {dst}")
-    
-    if not args.yes:
-        confirmation = input("\nDo you want to proceed? (y/n): ")
-        if confirmation.lower() not in ['y', 'yes']:
-            print("Operation cancelled")
-            return SUCCESS
-    
-    # Delete the distances
-    for src, dst in distances_to_delete:
-        try:
-            client.delete_distance(src, dst)
-            print(f"Deleted distance information from {src} to {dst}")
-        except Exception as e:
-            error_str: str = str(e)
-            if "NoDistance" in error_str or "RSENotFound" in error_str:
-                logger.error(f"Distance from {src} to {dst} not found")
+    try:
+        # Get complete export of RSE data with distances
+        export_data = client.export_data(distance=True)
+        
+        # Extract all RSEs and distances
+        all_rses = export_data.get('rses', {})
+        all_distances = export_data.get('distances', {})
+        
+        if not all_rses or not all_distances:
+            logger.error("Failed to retrieve RSE or distance data")
+            return FAILURE
+        
+        src_rses = []
+        dst_rses = []
+        
+        if args.source:
+            # Check if it's an RSE in the export data
+            if args.source in all_rses:
+                src_rses = [args.source]
             else:
-                logger.error(f"Failed to delete distance from {src} to {dst}: {error_str}")
-    
-    return SUCCESS
+                # Try as a site - find RSEs with matching site attribute
+                site_matches = []
+                for rse_name, rse_data in all_rses.items():
+                    if rse_data.get('attributes', {}).get('site') == args.source:
+                        site_matches.append(rse_name)
+                
+                if site_matches:
+                    src_rses = site_matches
+                else:
+                    logger.error(f"Source '{args.source}' is neither a valid RSE nor a site with RSEs")
+                    return FAILURE
+        
+        if args.destination:
+            # Check if it's an RSE in the export data
+            if args.destination in all_rses:
+                dst_rses = [args.destination]
+            else:
+                # Try as a site - find RSEs with matching site attribute
+                site_matches = []
+                for rse_name, rse_data in all_rses.items():
+                    if rse_data.get('attributes', {}).get('site') == args.destination:
+                        site_matches.append(rse_name)
+                
+                if site_matches:
+                    dst_rses = site_matches
+                else:
+                    logger.error(f"Destination '{args.destination}' is neither a valid RSE nor a site with RSEs")
+                    return FAILURE
+        
+        distances_to_delete = []
+        
+        if args.source and args.destination:
+            # Both source and destination provided, find specific distances
+            for src in src_rses:
+                if src in all_distances:
+                    for dst in dst_rses:
+                        if dst in all_distances[src]:
+                            distances_to_delete.append((src, dst))
+                        
+                        # If bidirectional, also check and add the reverse direction
+                        if args.bidirectional and dst in all_distances and src in all_distances[dst]:
+                            distances_to_delete.append((dst, src))
+        
+        elif args.source:
+            # Only source provided, delete all outgoing distances from source(s)
+            for src in src_rses:
+                if src in all_distances:
+                    for dst in all_distances[src]:
+                        distances_to_delete.append((src, dst))
+        
+        elif args.destination:
+            # Only destination provided, delete all incoming distances to destination(s)
+            for dst in dst_rses:
+                for src, dest_dict in all_distances.items():
+                    if dst in dest_dict:
+                        distances_to_delete.append((src, dst))
+        
+        # Remove duplicates
+        distances_to_delete = list(set(distances_to_delete))
+        
+        if not distances_to_delete:
+            logger.error("No distances to delete")
+            return FAILURE
+        
+        print(f"The following {len(distances_to_delete)} distances will be deleted:")
+        for src, dst in sorted(distances_to_delete):
+            print(f"  {src} → {dst}")
+        
+        if not args.yes:
+            confirmation = input("\nDo you want to proceed? (y/n): ")
+            if confirmation.lower() not in ['y', 'yes']:
+                print("Operation cancelled")
+                return SUCCESS
+        
+        success_count = 0
+        error_count = 0
+        for src, dst in distances_to_delete:
+            try:
+                client.delete_distance(src, dst)
+                success_count += 1
+                print(f"Deleted distance from {src} to {dst}")
+            except Exception as e:
+                error_str = str(e)
+                error_count += 1
+                if "NoDistance" in error_str or "RSENotFound" in error_str:
+                    logger.error(f"Distance from {src} to {dst} not found")
+                else:
+                    logger.error(f"Failed to delete distance from {src} to {dst}: {error_str}")
+        
+        # Summary
+        print(f"\nSummary: {success_count} distances deleted, {error_count} errors")
+        return SUCCESS if error_count == 0 else FAILURE
+        
+    except Exception as e:
+        logger.error(f"Failed to export data: {str(e)}")
+        return FAILURE
 
 
 @exception_handler
