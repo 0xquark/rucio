@@ -34,6 +34,7 @@ from tabulate import tabulate
 
 from rucio import version
 from rucio.cli.utils import exception_handler, get_client, setup_gfal2_logger, signal_handler
+from rucio.client.exportclient import ExportClient
 from rucio.client.richclient import MAX_TRACEBACK_WIDTH, MIN_CONSOLE_WIDTH, CLITheme, generate_table, get_cli_config, get_pager, print_output, setup_rich_logger
 from rucio.common.constants import RseAttr
 from rucio.common.exception import (
@@ -644,9 +645,8 @@ def delete_distance_rses(args, client, logger, console, spinner):
     distances_to_delete = []
     
     # Check which arguments were provided and how to interpret them
-    if args.source and args.destination:
-        # If both source and destination are provided, we need to check if they're sites or RSEs
-        # First try to get them as RSEs
+    if args.source:
+        # Try as RSE first
         try:
             client.get_rse(args.source)
             src_rses = [args.source]
@@ -660,7 +660,9 @@ def delete_distance_rses(args, client, logger, console, spinner):
             except Exception as e:
                 logger.error("Error retrieving RSEs for site %s: %s" % (args.source, str(e)))
                 return FAILURE
-            
+                
+    if args.destination:
+        # Try as RSE first
         try:
             client.get_rse(args.destination)
             dst_rses = [args.destination]
@@ -674,48 +676,36 @@ def delete_distance_rses(args, client, logger, console, spinner):
             except Exception as e:
                 logger.error("Error retrieving RSEs for site %s: %s" % (args.destination, str(e)))
                 return FAILURE
-    elif args.source:
-        # Delete all outgoing links from source
-        try:
-            client.get_rse(args.source)
-            src_rses = [args.source]
-        except Exception:
-            # Not an RSE, try as site
-            try:
-                src_rses = [rse['rse'] for rse in client.list_rses("site=%s" % args.source)]
-                if not src_rses:
-                    logger.error("Source '%s' is neither a valid RSE nor a site with RSEs" % args.source)
-                    return FAILURE
-            except Exception as e:
-                logger.error("Error retrieving RSEs for site %s: %s" % (args.source, str(e)))
-                return FAILURE
-        # For outgoing links, we need all possible destinations
-        dst_rses = [rse['rse'] for rse in client.list_rses()]
-    elif args.destination:
-        # Delete all incoming links to destination
-        try:
-            client.get_rse(args.destination)
-            dst_rses = [args.destination]
-        except Exception:
-            # Not an RSE, try as site
-            try:
-                dst_rses = [rse['rse'] for rse in client.list_rses("site=%s" % args.destination)]
-                if not dst_rses:
-                    logger.error("Destination '%s' is neither a valid RSE nor a site with RSEs" % args.destination)
-                    return FAILURE
-            except Exception as e:
-                logger.error("Error retrieving RSEs for site %s: %s" % (args.destination, str(e)))
-                return FAILURE
-        # For incoming links, we need all possible sources
-        src_rses = [rse['rse'] for rse in client.list_rses()]
+                
+    # Use ExportClient to get all distances
+    export_client = ExportClient()
+    distances_data = export_client.export_data(distance=True)['distances']
     
-    # Build list of distances to delete
-    for src in src_rses:
-        for dst in dst_rses:
-            if src != dst:  # Skip self-links
-                distances_to_delete.append((src, dst))
-                if args.bidirectional:
-                    distances_to_delete.append((dst, src))
+    # Process based on what was provided
+    if args.source and args.destination:
+        # Both source and destination provided, find matches
+        for src_rse in src_rses:
+            for dst_rse in dst_rses:
+                if src_rse != dst_rse:  # Skip self-links
+                    # Check if this distance exists
+                    if src_rse in distances_data and dst_rse in distances_data[src_rse]:
+                        distances_to_delete.append((src_rse, dst_rse))
+                    
+                    # If bidirectional, also add reverse
+                    if args.bidirectional and dst_rse in distances_data and src_rse in distances_data[dst_rse]:
+                        distances_to_delete.append((dst_rse, src_rse))
+    elif args.source:
+        # Only source provided, find all outgoing links
+        for src_rse in src_rses:
+            if src_rse in distances_data:
+                for dst_rse in distances_data[src_rse]:
+                    distances_to_delete.append((src_rse, dst_rse))
+    elif args.destination:
+        # Only destination provided, find all incoming links
+        for dst_rse in dst_rses:
+            for src_rse, dest_dict in distances_data.items():
+                if dst_rse in dest_dict:
+                    distances_to_delete.append((src_rse, dst_rse))
     
     # De-duplicate the list (in case of bidirectional with same source and destination)
     distances_to_delete = list(set(distances_to_delete))
