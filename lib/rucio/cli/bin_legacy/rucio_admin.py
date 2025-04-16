@@ -34,7 +34,6 @@ from tabulate import tabulate
 
 from rucio import version
 from rucio.cli.utils import exception_handler, get_client, setup_gfal2_logger, signal_handler
-from rucio.client.exportclient import ExportClient
 from rucio.client.richclient import MAX_TRACEBACK_WIDTH, MIN_CONSOLE_WIDTH, CLITheme, generate_table, get_cli_config, get_pager, print_output, setup_rich_logger
 from rucio.common.constants import RseAttr
 from rucio.common.exception import (
@@ -629,7 +628,7 @@ def delete_distance_rses(args, client, logger, console, spinner):
     Arguments support both RSE names and site names. If a site name is provided,
     the command will operate on all RSEs belonging to that site.
     """
-    # First assign src_flag and dest_flag to source and destination
+    # First assign src_flag and dest_flag to source and destination (This is to avoid the issue with positional arguments)
     if hasattr(args, 'src_flag') and args.src_flag:
         args.source = args.src_flag
         
@@ -721,7 +720,21 @@ def delete_distance_rses(args, client, logger, console, spinner):
         distances_to_delete = list(set(distances_to_delete))
         
         if not distances_to_delete:
-            logger.error("No distances to delete")
+            if args.source and args.destination:
+                if len(src_rses) == 1 and len(dst_rses) == 1:
+                    logger.error(f"Distance from {src_rses[0]} to {dst_rses[0]} not found")
+                else:
+                    logger.error(f"No distances found between specified sources and destinations")
+            elif args.source:
+                if len(src_rses) == 1:
+                    logger.error(f"No outgoing distances found from {src_rses[0]}")
+                else:
+                    logger.error(f"No outgoing distances found from specified sources")
+            elif args.destination:
+                if len(dst_rses) == 1:
+                    logger.error(f"No incoming distances found to {dst_rses[0]}")
+                else:
+                    logger.error(f"No incoming distances found to specified destinations")
             return FAILURE
         
         print(f"The following {len(distances_to_delete)} distances will be deleted:")
@@ -2081,10 +2094,10 @@ def get_parser():
                                                                   '    $ rucio-admin rse delete-distance JDOE_DATADISK JDOE_SCRATCHDISK\n'
                                                                   '\n'
                                                                   '    # Delete distance between two sites (all RSEs at each site)\n'
-                                                                  '    $ rucio-admin rse delete-distance JDOE_DATADISK_SITE_A JDOE_SCRATCHDISK_SITE_B\n'
+                                                                  '    $ rucio-admin rse delete-distance JDOE_SITE_A JDOE_SITE_B\n'
                                                                   '\n'
                                                                   '    # Delete distance bidirectionally between two sites\n'
-                                                                  '    $ rucio-admin rse delete-distance --bidirectional JDOE_DATADISK_SITE_A JDOE_SCRATCHDISK_SITE_B\n'
+                                                                  '    $ rucio-admin rse delete-distance --bidirectional JDOE_SITE_A JDOE_SITE_B\n'
                                                                   '\n'
                                                                   '    # Delete all outgoing links from an RSE\n'
                                                                   '    $ rucio-admin rse delete-distance --src JDOE_DATADISK\n'
