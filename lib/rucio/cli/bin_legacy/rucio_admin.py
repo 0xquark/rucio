@@ -767,7 +767,7 @@ def delete_distance_rses(args, client, logger, console, spinner):
             if cli_config == 'rich':
                 confirm = console.input("\nDo you want to proceed? [y/n]: ")
                 if confirm.lower() not in ['y', 'yes']:
-                    print_output(f"{CLITheme.INFO_ICON} Operation cancelled", console=console, no_pager=True)
+                    print_output(f"Operation cancelled", console=console, no_pager=True)
                     return SUCCESS
             else:
                 confirmation = input("\nDo you want to proceed? (y/n): ")
@@ -801,7 +801,7 @@ def delete_distance_rses(args, client, logger, console, spinner):
             if error_count == 0:
                 print_output(f"{CLITheme.SUCCESS_ICON} Successfully deleted {success_count} distances", console=console, no_pager=True)
             else:
-                print_output(f"{CLITheme.WARNING_ICON} Deleted {success_count} distances with {error_count} errors", console=console, no_pager=True)
+                print_output(f"Deleted {success_count} distances with {error_count} errors", console=console, no_pager=True)
         else:
             print(f"\nSummary: {success_count} distances deleted, {error_count} errors")
             
