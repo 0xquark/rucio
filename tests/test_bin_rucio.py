@@ -384,14 +384,6 @@ class TestBinRucio:
         exitcode, out, err = execute(cmd)
         assert exitcode == 0
         
-        # Verify distances exist
-        # cmd = 'rucio-admin rse get-distance %s %s' % (temprse1, temprse2)
-        # exitcode, out, err = execute(cmd)
-        # assert "distance=1" in out
-        # cmd = 'rucio-admin rse get-distance %s %s' % (temprse2, temprse1)
-        # exitcode, out, err = execute(cmd)
-        # assert "distance=1" in out
-        
         # Delete distances bidirectionally
         cmd = 'rucio-admin rse delete-distance --bidirectional -y %s %s' % (temprse1, temprse2)
         exitcode, out, err = execute(cmd)
