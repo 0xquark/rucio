@@ -60,12 +60,14 @@ def list_(ctx, dids, protocols, all_states, pfns, domain, link, missing, metalin
 
 @replica_list.command("dataset")
 @click.argument("dids", nargs=-1)
-@click.option("--deep", default=False, is_flag=True, help="Make a deep check, checking the contents of datasets in datasets")
+@click.option("--deep", default=False, is_flag=True, help="Option kept for backward compatibility. Deep checks are now performed automatically.", hidden=True)
 @click.option("--csv", help="Write output to comma separated values", is_flag=True, default=False)
 @click.pass_context
 def list_dataset(ctx, dids, deep, csv):
     """List dataset replicas"""
-    args = Arguments({"no_pager": ctx.obj.no_pager, "dids": dids, "deep": deep, "csv": csv})
+    if deep:
+        ctx.obj.logger.warning("The --deep option is no longer needed and will be removed in a future version.")
+    args = Arguments({"no_pager": ctx.obj.no_pager, "dids": dids, "deep": True, "csv": csv})
     list_dataset_replicas(args, ctx.obj.client, ctx.obj.logger, ctx.obj.console, ctx.obj.spinner)
 
 

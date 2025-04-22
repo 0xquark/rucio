@@ -337,14 +337,14 @@ class ReplicaClient(BaseClient):
 
         :param scope: The scope of the dataset.
         :param name: The name of the dataset.
-        :param deep: Lookup at the file level.
+        :param deep: Lookup at the file level. This parameter is kept for backward compatibility
+                    but is ignored and always treated as True.
 
         :returns: A list of dict dataset replicas.
 
         """
-        payload = {}
-        if deep:
-            payload = {'deep': True}
+        # Always use deep=True
+        payload = {'deep': True}
 
         url = build_url(self.host,
                         path='/'.join([self.REPLICAS_BASEURL, quote_plus(scope), quote_plus(name), 'datasets']),
@@ -380,13 +380,13 @@ class ReplicaClient(BaseClient):
 
         :param scope: The scope of the dataset.
         :param name: The name of the dataset.
-        :param deep: Lookup at the file level.
+        :param deep: Lookup at the file level. This parameter is kept for backward compatibility
+                    but is ignored and always treated as True.
 
         :returns: If VP exists a list of dicts of sites
         """
-        payload = {}
-        if deep:
-            payload = {'deep': True}
+        # Always use deep=True
+        payload = {'deep': True}
 
         url = build_url(self.host,
                         path='/'.join([self.REPLICAS_BASEURL, quote_plus(scope), quote_plus(name), 'datasets_vp']),

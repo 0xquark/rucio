@@ -174,10 +174,14 @@ def list_dataset_replicas(args, client, logger, console, spinner):
         for dmeta in client.get_metadata_bulk(dids=splitdids):
             _fetch_datasets_for_meta(meta=dmeta)
 
-    if args.deep or len(datasets) < 2:
+    # Show a warning if the deprecated deep option is used
+    if args.deep:
+        logger(logging.WARNING, "The --deep option is no longer needed and will be removed in a future version.")
+
+    if len(datasets) < 2:
         for did in datasets:
             dsn = f"{did['scope']}:{did['name']}"
-            for rep in client.list_dataset_replicas(scope=did['scope'], name=did['name'], deep=args.deep):
+            for rep in client.list_dataset_replicas(scope=did['scope'], name=did['name'], deep=True):
                 _append_result(dsn=dsn, replica=rep)
     else:
         for rep in client.list_dataset_replicas_bulk(dids=datasets):
@@ -2235,7 +2239,7 @@ To list the missing replica of a dataset of a given RSE-expression::
     ''')
     list_dataset_replicas_parser.set_defaults(function=list_dataset_replicas)
     list_dataset_replicas_parser.add_argument(dest='dids', action='store', nargs='+', help='The name of the DID to search.')
-    list_dataset_replicas_parser.add_argument('--deep', action='store_true', help='Make a deep check.')
+    list_dataset_replicas_parser.add_argument('--deep', action='store_true', help='Option kept for backward compatibility. Deep checks are now performed automatically. This option will be removed in a future version.')
     list_dataset_replicas_parser.add_argument('--csv', dest='csv', action='store_true', default=False, help='Comma Separated Value output.',)
 
     # The add-dataset command

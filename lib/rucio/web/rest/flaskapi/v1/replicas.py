@@ -1309,9 +1309,10 @@ class DatasetReplicas(ErrorHandlingMethodView):
           style: simple
         - name: deep
           in: query
-          description: Flag to ennable lookup at the file level.
+          description: Flag to enable lookup at the file level. This parameter is kept for backward compatibility but is ignored and always treated as True.
           schema:
             type: boolean
+          deprecated: true
         responses:
           200:
             description: OK
@@ -1372,13 +1373,15 @@ class DatasetReplicas(ErrorHandlingMethodView):
         try:
             scope, name = parse_scope_name(scope_name, request.environ.get('vo'))
 
-            def generate(_deep, vo):
-                for row in list_dataset_replicas(scope=scope, name=name, deep=_deep, vo=vo):
+            def generate(vo):
+                # Always use deep=True for more accurate results
+                for row in list_dataset_replicas(scope=scope, name=name, vo=vo):
                     yield dumps(row, cls=APIEncoder) + '\n'
 
-            deep = request.args.get('deep', default=False)
+            # Keep parameter for backward compatibility but ignore it
+            _ = request.args.get('deep', default=False)
 
-            return try_stream(generate(_deep=deep, vo=request.environ.get('vo')))
+            return try_stream(generate(vo=request.environ.get('vo')))
         except ValueError as error:
             return generate_http_error_flask(400, error)
 
@@ -1508,9 +1511,10 @@ class DatasetReplicasVP(ErrorHandlingMethodView):
           style: simple
         - name: deep
           in: query
-          description: Flag to ennable lookup at the file level.
+          description: Flag to enable lookup at the file level. This parameter is kept for backward compatibility but is ignored and always treated as True.
           schema:
             type: boolean
+          deprecated: true
         responses:
           200:
             description: OK. This needs documentation!
@@ -1522,13 +1526,15 @@ class DatasetReplicasVP(ErrorHandlingMethodView):
         try:
             scope, name = parse_scope_name(scope_name, request.environ.get('vo'))
 
-            def generate(_deep, vo):
-                for row in list_dataset_replicas_vp(scope=scope, name=name, deep=_deep, vo=vo):
+            def generate(vo):
+                # Always use deep=True for more accurate results
+                for row in list_dataset_replicas_vp(scope=scope, name=name, vo=vo):
                     yield dumps(row, cls=APIEncoder) + '\n'
 
-            deep = request.args.get('deep', default=False)
+            # Keep parameter for backward compatibility but ignore it
+            _ = request.args.get('deep', default=False)
 
-            return try_stream(generate(_deep=deep, vo=request.environ.get('vo')))
+            return try_stream(generate(vo=request.environ.get('vo')))
         except ValueError as error:
             return generate_http_error_flask(400, error)
 
