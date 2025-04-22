@@ -176,7 +176,7 @@ def list_dataset_replicas(args, client, logger, console, spinner):
 
     # Show a warning if the deprecated deep option is used
     if args.deep:
-        logger(logging.WARNING, "The --deep option is no longer needed and will be removed in a future version.")
+        logger.warning("The --deep otion is no longer needed and will be removed in a future version.")
 
     if len(datasets) < 2:
         for did in datasets:

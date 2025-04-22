@@ -74,10 +74,12 @@ class TestAbacusCollectionReplica:
         activity = get_schema_value('ACTIVITY')['enum'][0]
         rucio_client.add_replication_rule([{'scope': mock_scope.external, 'name': dataset}], 1, rse, lifetime=-1, activity=activity)
 
-        # Check dataset replica after rule creation - initial data
+        # Check dataset replica after rule creation - with deep=True always, we'll already have proper values
         dataset_replica = [replica for replica in rucio_client.list_dataset_replicas(mock_scope.external, dataset)][0]
-        assert dataset_replica['bytes'] == 0
-        assert dataset_replica['length'] == 0
+        # We already have the correct byte size because of deep=True
+        assert dataset_replica['bytes'] == len(files) * file_sizes
+        assert dataset_replica['length'] == len(files)
+        # But the collection replica record still needs to be updated by the abacus daemon
         assert dataset_replica['available_bytes'] == 0
         assert dataset_replica['available_length'] == 0
         assert str(dataset_replica['state']) == 'UNAVAILABLE'
@@ -140,10 +142,12 @@ class TestAbacusCollectionReplica:
         activity = get_schema_value('ACTIVITY')['enum'][0]
         rucio_client.add_replication_rule([{'scope': mock_scope.external, 'name': dataset}], 1, rse, lifetime=-1, activity=activity)
 
-        # Check dataset replica after rule creation - initial data
+        # Check dataset replica after rule creation - with deep=True always, we'll already have proper values
         dataset_replica = [replica for replica in rucio_client.list_dataset_replicas(mock_scope.external, dataset)][0]
-        assert dataset_replica['bytes'] == 0
-        assert dataset_replica['length'] == 0
+        # We already have the correct byte size because of deep=True
+        assert dataset_replica['bytes'] == len(files) * file_sizes
+        assert dataset_replica['length'] == len(files)
+        # But the collection replica record still needs to be updated by the abacus daemon
         assert dataset_replica['available_bytes'] == 0
         assert dataset_replica['available_length'] == 0
         assert str(dataset_replica['state']) == 'UNAVAILABLE'

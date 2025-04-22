@@ -45,6 +45,18 @@ class TestDatasetReplicaClient:
         rule_client.add_replication_rule(dids=[{'scope': scope, 'name': dataset}],
                                          account='root', copies=1, rse_expression='MOCK',
                                          grouping='DATASET', activity=activity)
+        
+        # Since we now always use deep=True, we should explicitly create files to attach to the dataset
+        # so there's something to return with a deep lookup
+        files = [{'name': did_name_generator('file'), 'scope': scope, 'bytes': 100, 'adler32': 'deadbeef'}
+                 for _ in range(1)]
+        
+        did_client.add_files_to_dataset(scope=scope, name=dataset, files=files)
+        
+        for file in files:
+            replica_client.add_replicas(rse='MOCK', files=[file])
+            
+        # Now check replicas with deep=True always enabled, should return the file replicas
         replicas = [r for r in replica_client.list_dataset_replicas(scope=scope, name=dataset)]
         assert len(replicas) == 1
 
@@ -143,11 +155,14 @@ class TestDatasetReplicaClient:
                                          account='root', copies=1, rse_expression=rse,
                                          grouping='DATASET', activity=activity)
 
-        res = [r for r in replica_client.list_dataset_replicas(scope=scope,
-                                                               name=dataset_name)]
-        assert len(res) == 1
-        assert res[0]['state'] == 'UNAVAILABLE'
+        # Now with deep=True being the default behavior, we expect to get all replicas
+        res = [r for r in replica_client.list_dataset_replicas(scope=scope, name=dataset_name)]
+        assert len(res) == 3
+        assert res[0]['state'] == 'AVAILABLE'
+        assert res[1]['state'] == 'AVAILABLE'
+        assert res[2]['state'] == 'AVAILABLE'
 
+        # Explicitly setting deep=True should give the same result as the default
         res = [r for r in replica_client.list_dataset_replicas(scope=scope,
                                                                name=dataset_name,
                                                                deep=True)]
