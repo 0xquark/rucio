@@ -95,13 +95,15 @@ def build_images(matrix, script_args):
             env = {"DOCKER_BUILDKIT": "1"}
             
             # Use docker buildx build (or podman build if USE_PODMAN is set)
-            docker_cmd = 'build' if use_podman else 'buildx'
+            if use_podman:
+                docker_cmd = ['docker', 'build']
+            else:
+                docker_cmd = ['docker', 'buildx', 'build']
             
             if buildargs.IMAGE_IDENTIFIER == 'integration-test':
                 buildfile = pathlib.Path(script_args.buildfiles_dir) / 'alma9.Dockerfile'
                 args = (
-                    'docker',
-                    docker_cmd,
+                    *docker_cmd,
                     *cache_args,
                     *buildkit_cache_args,
                     '--file',
@@ -115,8 +117,7 @@ def build_images(matrix, script_args):
                 # build images for autotest or votest
                 buildfile = pathlib.Path(script_args.buildfiles_dir) / f'{dist}.Dockerfile'
                 args = (
-                    'docker',
-                    docker_cmd,
+                    *docker_cmd,
                     *cache_args,
                     *buildkit_cache_args,
                     '--file',
