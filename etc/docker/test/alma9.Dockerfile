@@ -11,13 +11,13 @@ FROM almalinux:9.1 as base
     ENV PYTHON_310_PATCH_VERSION="4"
 
 FROM base as oracle-client
-    RUN --mount=type=cache,target=/var/cache/dnf \
+    RUN --mount=type=cache,id=dnf-oracle,target=/var/cache/dnf \
         dnf install -y libnsl libaio nodejs npm
     RUN rpm -i https://download.oracle.com/otn_software/linux/instantclient/1912000/oracle-instantclient19.12-basiclite-19.12.0.0.0-1.x86_64.rpm && \
         echo "/usr/lib/oracle/19.12/client64/lib" > /etc/ld.so.conf.d/oracle-instantclient.conf;
 
 FROM base as python
-    RUN --mount=type=cache,target=/var/cache/dnf \
+    RUN --mount=type=cache,id=dnf-python,target=/var/cache/dnf \
         --mount=type=cache,target=/root/.cache/pip \
         if [ "$PYTHON" == "3.9" ] ; then \
             dnf install -y epel-release.noarch && \
@@ -50,7 +50,7 @@ FROM base as python
     RUN python${PYTHON} -m venv ${PYTHON_VENV}
 
 FROM python as gfal2
-    RUN --mount=type=cache,target=/var/cache/dnf \
+    RUN --mount=type=cache,id=dnf-gfal2,target=/var/cache/dnf \
         --mount=type=cache,target=/root/.cache/pip \
         dnf install -y epel-release.noarch && \
         dnf install -y 'dnf-command(config-manager)' && \
@@ -81,7 +81,7 @@ FROM python as gfal2
         fi
 
 FROM python as mod_wsgi
-    RUN --mount=type=cache,target=/var/cache/dnf \
+    RUN --mount=type=cache,id=dnf-modwsgi,target=/var/cache/dnf \
         if [ "$PYTHON" == "3.9" ] ; then \
             dnf install -y python3-mod_wsgi && \
             cp /usr/lib64/httpd/modules/mod_wsgi_python3.so /usr/lib64/httpd/modules/mod_wsgi.so; \
@@ -106,7 +106,7 @@ FROM python as rucio-runtime
     COPY requirements requirements
     COPY .pep8 .pycodestyle pyproject.toml setup.py setup_rucio.py setup_rucio_client.py setup_webui.py setuputil.py ./
 
-    RUN --mount=type=cache,target=/var/cache/dnf \
+    RUN --mount=type=cache,id=dnf-runtime,target=/var/cache/dnf \
         dnf install -y epel-release.noarch && \
         dnf install -y 'dnf-command(config-manager)' && \
         dnf config-manager --enable crb && \
@@ -137,7 +137,7 @@ FROM python as rucio-runtime
         cp etc/certs/ruciouser.key.pem etc/ruciouser.key.pem
 
 FROM rucio-runtime as requirements
-    RUN --mount=type=cache,target=/var/cache/dnf \
+    RUN --mount=type=cache,id=dnf-requirements,target=/var/cache/dnf \
         --mount=type=cache,target=/root/.cache/pip \
         dnf -y update --nobest && \
         dnf -y --skip-broken install make gcc krb5-devel xmlsec1-devel xmlsec1-openssl-devel pkg-config libtool-ltdl-devel git && \
