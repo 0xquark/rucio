@@ -11,19 +11,22 @@ FROM almalinux:9.1 as base
     ENV PYTHON_310_PATCH_VERSION="4"
 
 FROM base as oracle-client
-    RUN dnf install -y libnsl libaio nodejs npm
+    RUN --mount=type=cache,target=/var/cache/dnf \
+        dnf install -y libnsl libaio nodejs npm
     RUN rpm -i https://download.oracle.com/otn_software/linux/instantclient/1912000/oracle-instantclient19.12-basiclite-19.12.0.0.0-1.x86_64.rpm && \
         echo "/usr/lib/oracle/19.12/client64/lib" > /etc/ld.so.conf.d/oracle-instantclient.conf;
 
 FROM base as python
-    RUN if [ "$PYTHON" == "3.9" ] ; then \
+    RUN --mount=type=cache,target=/var/cache/dnf \
+        --mount=type=cache,target=/root/.cache/pip \
+        if [ "$PYTHON" == "3.9" ] ; then \
             dnf install -y epel-release.noarch && \
             dnf install -y 'dnf-command(config-manager)' && \
             dnf config-manager --set-enabled crb && \
             dnf -y update && \
             dnf -y install boost-python3 python3-pip python3-devel && \
-            python3 -m pip --no-cache-dir install --upgrade pip && \
-            python3 -m pip --no-cache-dir install --upgrade setuptools wheel; \
+            python3 -m pip install --upgrade pip && \
+            python3 -m pip install --upgrade setuptools wheel; \
         elif [ "$PYTHON" == "3.10" ] ; then \
             PYTHON_VERSION="3.10.${PYTHON_310_PATCH_VERSION}" && \
             dnf install -y 'dnf-command(config-manager)' && \
@@ -41,13 +44,15 @@ FROM base as python
             rm -rf Python-${PYTHON_VERSION}.tgz && \
             echo "/usr/local/lib" > /etc/ld.so.conf.d/python${PYTHON}.conf && \
             ldconfig && \
-            python${PYTHON} -m pip --no-cache-dir install --upgrade pip && \
-            python${PYTHON} -m pip --no-cache-dir install --upgrade setuptools wheel; \
+            python${PYTHON} -m pip install --upgrade pip && \
+            python${PYTHON} -m pip install --upgrade setuptools wheel; \
         fi
     RUN python${PYTHON} -m venv ${PYTHON_VENV}
 
 FROM python as gfal2
-    RUN dnf install -y epel-release.noarch && \
+    RUN --mount=type=cache,target=/var/cache/dnf \
+        --mount=type=cache,target=/root/.cache/pip \
+        dnf install -y epel-release.noarch && \
         dnf install -y 'dnf-command(config-manager)' && \
         dnf config-manager --enable crb && \
         dnf -y update && \
@@ -69,14 +74,15 @@ FROM python as gfal2
             RPMBUILD_SRC_EXTRA_FLAGS="--without docs --without python2" make srpm && \
             dnf -y builddep gfal2-python-1.12.0-1.el9.src.rpm && \
             cd ../ && \
-            CPLUS_INCLUDE_PATH=$CPLUS_INCLUDE_PATH:/usr/local/src/boost_1_80_0  python3 -m pip --no-cache-dir install . && \
+            CPLUS_INCLUDE_PATH=$CPLUS_INCLUDE_PATH:/usr/local/src/boost_1_80_0  python3 -m pip install . && \
             cd .. && rm -rf gfal2-python && \
             dnf remove -y boost-python3 && \
             cp ${PYTHON_VENV}/lib/python${PYTHON}/site-packages/gfal2.so /usr/lib64/gfal2.so; \
         fi
 
 FROM python as mod_wsgi
-    RUN if [ "$PYTHON" == "3.9" ] ; then \
+    RUN --mount=type=cache,target=/var/cache/dnf \
+        if [ "$PYTHON" == "3.9" ] ; then \
             dnf install -y python3-mod_wsgi && \
             cp /usr/lib64/httpd/modules/mod_wsgi_python3.so /usr/lib64/httpd/modules/mod_wsgi.so; \
         elif [ "$PYTHON" == "3.10" ] ; then \
@@ -100,7 +106,8 @@ FROM python as rucio-runtime
     COPY requirements requirements
     COPY .pep8 .pycodestyle pyproject.toml setup.py setup_rucio.py setup_rucio_client.py setup_webui.py setuputil.py ./
 
-    RUN dnf install -y epel-release.noarch && \
+    RUN --mount=type=cache,target=/var/cache/dnf \
+        dnf install -y epel-release.noarch && \
         dnf install -y 'dnf-command(config-manager)' && \
         dnf config-manager --enable crb && \
         dnf -y update && \
@@ -130,14 +137,17 @@ FROM python as rucio-runtime
         cp etc/certs/ruciouser.key.pem etc/ruciouser.key.pem
 
 FROM rucio-runtime as requirements
-    RUN dnf -y update --nobest && \
+    RUN --mount=type=cache,target=/var/cache/dnf \
+        --mount=type=cache,target=/root/.cache/pip \
+        dnf -y update --nobest && \
         dnf -y --skip-broken install make gcc krb5-devel xmlsec1-devel xmlsec1-openssl-devel pkg-config libtool-ltdl-devel git && \
-        python3 -m pip --no-cache-dir install --upgrade pip && \
-        python3 -m pip --no-cache-dir install --upgrade setuptools wheel && \
-        python3 -m pip --no-cache-dir install --upgrade -r requirements/requirements.server.txt -r requirements/requirements.dev.txt
+        python3 -m pip install --upgrade pip && \
+        python3 -m pip install --upgrade setuptools wheel && \
+        python3 -m pip install --upgrade -r requirements/requirements.server.txt -r requirements/requirements.dev.txt
 
     COPY .pep8 .pycodestyle pyproject.toml setup.py setup_rucio.py setup_rucio_client.py setup_webui.py ./
-    RUN python3 -m pip --no-cache-dir install --upgrade .[oracle,postgresql,mysql,kerberos,saml,dev] && \
+    RUN --mount=type=cache,target=/root/.cache/pip \
+        python3 -m pip install --upgrade .[oracle,postgresql,mysql,kerberos,saml,dev] && \
         python3 -m pip list
 
 FROM rucio-runtime as final

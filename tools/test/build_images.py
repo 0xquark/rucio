@@ -73,6 +73,17 @@ def build_images(matrix, script_args):
                 print("Running", " ".join(args), file=sys.stderr, flush=True)
                 subprocess.run(args, stdout=sys.stderr, check=False)
 
+            # Add BuildKit cache arguments from environment variables
+            buildkit_cache_args = ()
+            if os.environ.get('BUILDX_CACHE_FROM'):
+                buildkit_cache_args += ('--cache-from', os.environ['BUILDX_CACHE_FROM'])
+            if os.environ.get('BUILDX_CACHE_TO'):
+                buildkit_cache_args += ('--cache-to', os.environ['BUILDX_CACHE_TO'])
+            if script_args.cache_repo and not script_args.build_no_cache:
+                # Add registry cache as secondary cache source
+                cache_from_registry = f'type=registry,ref={imagetag}'
+                buildkit_cache_args += ('--cache-from', cache_from_registry)
+
             # add image to output
             images[imagetag] = {DIST_KEY: dist, **buildargs._asdict()}
 
@@ -88,6 +99,7 @@ def build_images(matrix, script_args):
                     'docker',
                     'build',
                     *cache_args,
+                    *buildkit_cache_args,
                     '--file',
                     str(buildfile),
                     '--tag',
@@ -102,6 +114,7 @@ def build_images(matrix, script_args):
                     'docker',
                     'build',
                     *cache_args,
+                    *buildkit_cache_args,
                     '--file',
                     str(buildfile),
                     '--tag',
