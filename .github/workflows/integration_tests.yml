@@ -53,9 +53,11 @@ jobs:
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3 
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-integration-${{ hashFiles('dev/alma9.Dockerfile', '**/requirements*.txt') }}-${{ github.sha }}
+          key: ${{ runner.os }}-buildx-integration-${{ matrix.cfg.DIST }}-${{ matrix.cfg.PYTHON }}-${{ hashFiles('dev/alma9.Dockerfile', '**/requirements*.txt') }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-buildx-integration-${{ hashFiles('dev/alma9.Dockerfile', '**/requirements*.txt') }}-
+            ${{ runner.os }}-buildx-integration-${{ matrix.cfg.DIST }}-${{ matrix.cfg.PYTHON }}-${{ hashFiles('dev/alma9.Dockerfile', '**/requirements*.txt') }}-
+            ${{ runner.os }}-buildx-integration-${{ matrix.cfg.DIST }}-${{ matrix.cfg.PYTHON }}-
+            ${{ runner.os }}-buildx-integration-${{ matrix.cfg.DIST }}-
             ${{ runner.os }}-buildx-integration-
       - name: Select tag for rucio containers
         shell: bash
