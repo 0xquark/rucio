@@ -106,6 +106,7 @@ jobs:
           i=0; until [ "$i" -ge 3 ]; do
             IMAGES=$(echo '${{ toJson(matrix.cfg) }}' | $GITHUB_WORKSPACE/dev/rucio/tools/test/build_images.py --output list \
                 --cache-repo ghcr.io/${{ github.repository }} --branch "${{ needs.setup.outputs.branch }}" \
+                --download-only \
                 $GITHUB_WORKSPACE/dev || echo "")
             if [[ -n $IMAGES ]]; then break;
             else
