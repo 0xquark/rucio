@@ -104,6 +104,7 @@ jobs:
           docker login https://ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
           docker compose -f $GITHUB_WORKSPACE/dev/rucio/etc/docker/dev/docker-compose.yml --profile storage --profile externalmetadata --profile iam pull
           i=0; until [ "$i" -ge 3 ]; do
+            # Explicitly use tagged images by using --download-only and no --push-cache
             IMAGES=$(echo '${{ toJson(matrix.cfg) }}' | $GITHUB_WORKSPACE/dev/rucio/tools/test/build_images.py --output list \
                 --cache-repo ghcr.io/${{ github.repository }} --branch "${{ needs.setup.outputs.branch }}" \
                 --download-only \
