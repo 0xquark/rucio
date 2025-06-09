@@ -111,8 +111,14 @@ def build_images(matrix, script_args):
                     '--tag',
                     imagetag,
                     *itertools.chain(*map(lambda x: ('--build-arg', f'{x[0]}={x[1]}'), filtered_buildargs.items())),
-                    f'{script_args.buildfiles_dir}',
                 )
+                
+                if script_args.push_cache:
+                    args += ('--push',)
+                elif not use_podman:
+                    args += ('--output=type=image,push=false',)
+                    
+                args += (f'{script_args.buildfiles_dir}',)
             else:
                 # build images for autotest or votest
                 buildfile = pathlib.Path(script_args.buildfiles_dir) / f'{dist}.Dockerfile'
@@ -125,8 +131,16 @@ def build_images(matrix, script_args):
                     '--tag',
                     imagetag,
                     *itertools.chain(*map(lambda x: ('--build-arg', f'{x[0]}={x[1]}'), filtered_buildargs.items())),
-                    '.'
                 )
+            
+            # Add push flag only when explicitly requested
+            if script_args.push_cache:
+                args += ('--push',)
+            elif not use_podman:  # Only add output type for docker buildx, not for podman
+                args += ('--output=type=image,push=false',)
+                
+            args += ('.',)
+            
             if not args:
                 print("Error defining build arguments from", buildargs, file=sys.stderr, flush=True)
                 sys.exit(1)
