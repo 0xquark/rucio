@@ -113,9 +113,9 @@ def build_images(matrix, script_args):
             if buildargs.IMAGE_IDENTIFIER == 'integration-test':
                 buildfile = pathlib.Path(script_args.buildfiles_dir) / 'alma9.Dockerfile'
                 args = (
-                    'docker',
-                    'build',
+                    *docker_cmd,
                     *cache_args,
+                    *buildkit_cache_args,
                     '--file',
                     str(buildfile),
                     '--tag',
@@ -127,9 +127,9 @@ def build_images(matrix, script_args):
                 # build images for autotest or votest
                 buildfile = pathlib.Path(script_args.buildfiles_dir) / f'{dist}.Dockerfile'
                 args = (
-                    'docker',
-                    'build',
+                    *docker_cmd,
                     *cache_args,
+                    *buildkit_cache_args,
                     '--file',
                     str(buildfile),
                     '--tag',
