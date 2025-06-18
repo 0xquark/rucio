@@ -190,14 +190,16 @@ jobs:
 
           i=0; until [ "$i" -ge 3 ]; do
             if [[ "${{ needs.setup.outputs.branch }}" == release-* ]]; then
+
               echo "::notice::Building release branch image from scratch: ${{ needs.setup.outputs.branch }}"
               IMAGES=$(echo '${{ toJson(matrix.cfg) }}' | ./tools/test/build_images.py \
                   --cache-repo ghcr.io/${{ github.repository }} \
                   --branch "${{ needs.setup.outputs.branch }}" --build-no-cache ./etc/docker/test || echo "")
             else
+              echo "::notice::Building non-release branch image: ${{ needs.setup.outputs.branch }}"
               IMAGES=$(echo '${{ toJson(matrix.cfg) }}' | ./tools/test/build_images.py \
                   --cache-repo ghcr.io/${{ github.repository }} \
-                  --branch "${{ needs.setup.outputs.branch }}" ./etc/docker/test || echo "")
+                  --branch "${{ needs.setup.outputs.branch }}" --build-no-cache ./etc/docker/test || echo "")
             fi
             if [[ -n $IMAGES ]]; then break;
             else
