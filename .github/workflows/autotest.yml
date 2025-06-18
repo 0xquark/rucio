@@ -143,6 +143,11 @@ jobs:
       - name: Identify branch
         id: branch
         run: python3 tools/github/workflow/set_branch_output_env.py
+      - name: Debug branch info
+        run: |
+          echo "Raw GITHUB_REF: $GITHUB_REF"
+          echo "Raw GITHUB_BASE_REF: $GITHUB_BASE_REF"
+          echo "Detected branch: ${{ steps.branch.outputs.branch }}"
       - name: Identify Matrix
         id: matrix
         run: |
@@ -189,17 +194,20 @@ jobs:
           export BUILDX_CACHE_TO="type=local,dest=/tmp/.buildx-cache-new,mode=max"
 
           i=0; until [ "$i" -ge 3 ]; do
-            if [[ "${{ needs.setup.outputs.branch }}" == release-* ]]; then
-
-              echo "::notice::Building release branch image from scratch: ${{ needs.setup.outputs.branch }}"
+            # Ensure we strip refs/heads/ prefix for comparison
+            BRANCH_NAME="${{ needs.setup.outputs.branch }}"
+            BRANCH_NAME="${BRANCH_NAME#refs/heads/}"
+            
+            if [[ "$BRANCH_NAME" == release-* ]]; then
+              echo "::notice::Building release branch image from scratch: $BRANCH_NAME"
               IMAGES=$(echo '${{ toJson(matrix.cfg) }}' | ./tools/test/build_images.py \
                   --cache-repo ghcr.io/${{ github.repository }} \
-                  --branch "${{ needs.setup.outputs.branch }}" --build-no-cache ./etc/docker/test || echo "")
+                  --branch "$BRANCH_NAME" --build-no-cache ./etc/docker/test || echo "")
             else
-              echo "::notice::Building non-release branch image: ${{ needs.setup.outputs.branch }}"
+              echo "::notice::Building non-release branch image: $BRANCH_NAME"
               IMAGES=$(echo '${{ toJson(matrix.cfg) }}' | ./tools/test/build_images.py \
                   --cache-repo ghcr.io/${{ github.repository }} \
-                  --branch "${{ needs.setup.outputs.branch }}" --build-no-cache ./etc/docker/test || echo "")
+                  --branch "$BRANCH_NAME" --build-no-cache ./etc/docker/test || echo "")
             fi
             if [[ -n $IMAGES ]]; then break;
             else
