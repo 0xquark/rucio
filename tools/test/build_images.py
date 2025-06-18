@@ -65,15 +65,21 @@ def build_images(matrix, script_args):
             imagetag = f'rucio-{image_identifier}:{dist.lower()}{buildargs_tags}'
             if script_args.cache_repo:
                 imagetag = script_args.cache_repo.lower() + '/' + imagetag
+            
+            # Determine if this is a release branch
+            is_release_branch = script_args.branch and str(script_args.branch).lstrip('refs/heads/').startswith('release-')
+            
             cache_args = ()
-            if script_args.build_no_cache:
+            if script_args.build_no_cache or is_release_branch:
+                # Always build with --no-cache for release branches
                 pull_flag = '--pull-always' if use_podman else '--pull'
                 # Do NOT pull for release branches
-                if not script_args.branch.startswith("release-"):
+                if not is_release_branch:
                     cache_args = ('--no-cache', pull_flag)
                 else:
                     cache_args = ('--no-cache',)
-            elif script_args.cache_repo:
+            elif script_args.cache_repo and not is_release_branch:
+                # Only try to pull from cache for non-release branches
                 args = ('docker', 'pull', imagetag)
                 print("Running", " ".join(args), file=sys.stderr, flush=True)
                 subprocess.run(args, stdout=sys.stderr, check=False)

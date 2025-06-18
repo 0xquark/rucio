@@ -187,10 +187,10 @@ jobs:
           export DOCKER_BUILDKIT=1
           export BUILDX_CACHE_FROM="type=local,src=/tmp/.buildx-cache"
           export BUILDX_CACHE_TO="type=local,dest=/tmp/.buildx-cache-new,mode=max"
-          
-          
+
           i=0; until [ "$i" -ge 3 ]; do
             if [[ "${{ needs.setup.outputs.branch }}" == release-* ]]; then
+              echo "::notice::Building release branch image from scratch: ${{ needs.setup.outputs.branch }}"
               IMAGES=$(echo '${{ toJson(matrix.cfg) }}' | ./tools/test/build_images.py \
                   --cache-repo ghcr.io/${{ github.repository }} \
                   --branch "${{ needs.setup.outputs.branch }}" --build-no-cache ./etc/docker/test || echo "")
