@@ -79,10 +79,6 @@ def build_images(matrix, script_args):
                 buildkit_cache_args += ('--cache-from', os.environ['BUILDX_CACHE_FROM'])
             if os.environ.get('BUILDX_CACHE_TO'):
                 buildkit_cache_args += ('--cache-to', os.environ['BUILDX_CACHE_TO'])
-            if script_args.cache_repo and not script_args.build_no_cache:
-                # Add registry cache as secondary cache source (Optional)
-                cache_from_registry = f'type=registry,ref={imagetag}'
-                buildkit_cache_args += ('--cache-from', cache_from_registry)
 
             # add image to output
             images[imagetag] = {DIST_KEY: dist, **buildargs._asdict()}
