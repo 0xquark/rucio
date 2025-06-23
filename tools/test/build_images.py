@@ -63,7 +63,7 @@ def build_images(matrix, script_args):
                 if branch.startswith('release-'):
                     image_identifier += '-' + branch.lstrip('release-').lower()
             imagetag = f'rucio-{image_identifier}:{dist.lower()}{buildargs_tags}'
-            if script_args.cache_repo and not script_args.no_push_tag:
+            if script_args.cache_repo:
                 imagetag = script_args.cache_repo.lower() + '/' + imagetag
             cache_args = ()
             if script_args.build_no_cache:
@@ -79,7 +79,7 @@ def build_images(matrix, script_args):
                 buildkit_cache_args += ('--cache-from', os.environ['BUILDX_CACHE_FROM'])
             if os.environ.get('BUILDX_CACHE_TO'):
                 buildkit_cache_args += ('--cache-to', os.environ['BUILDX_CACHE_TO'])
-            if script_args.cache_repo and not script_args.build_no_cache and not script_args.no_push_tag:
+            if script_args.cache_repo and not script_args.build_no_cache:
                 # Add registry cache as secondary cache source (Optional)
                 cache_from_registry = f'type=registry,ref={imagetag}'
                 buildkit_cache_args += ('--cache-from', cache_from_registry)
@@ -98,7 +98,11 @@ def build_images(matrix, script_args):
             if use_podman:
                 docker_cmd = ['podman', 'build']
             else:
-                docker_cmd = ['docker', 'buildx', 'build']
+                # Ensure that the image is loaded into the local Docker daemon so that it can be
+                # immediately used by the running tests step. Without the
+                # --load flag Docker Buildx keeps the image only in the BuildKit cache which
+                # means a later `docker run` would attempt to pull it from the registry again.
+                docker_cmd = ['docker', 'buildx', 'build', '--load']
             
             if buildargs.IMAGE_IDENTIFIER == 'integration-test':
                 buildfile = pathlib.Path(script_args.buildfiles_dir) / 'alma9.Dockerfile'
@@ -134,7 +138,7 @@ def build_images(matrix, script_args):
             subprocess.run(args, stdout=sys.stderr, check=True, env=env)
             print("Finished building image", imagetag, file=sys.stderr, flush=True)
 
-            if script_args.push_cache and not script_args.no_push_tag:
+            if script_args.push_cache:
                 args = ('docker', 'push', imagetag)
                 print("Running", " ".join(args), file=sys.stderr, flush=True)
                 subprocess.run(args, stdout=sys.stderr, check=True)
@@ -155,8 +159,6 @@ def build_arguments(parser):
                         help='push the images to the cache repo')
     parser.add_argument('-b', '--branch', dest='branch', type=str, default='master',
                         help='the branch used to build the images from (used for the image name)')
-    parser.add_argument('--no-push-tag', dest='no_push_tag', action='store_true',
-                        help='use local tags instead of registry tags for built images')
 
 
 def build_main(matrix, args):
