@@ -188,11 +188,22 @@ jobs:
           export BUILDX_CACHE_FROM="type=local,src=/tmp/.buildx-cache"
           export BUILDX_CACHE_TO="type=local,dest=/tmp/.buildx-cache-new,mode=max"
           
+          # Ensure build_images.py is executable
+          chmod +x ./tools/test/build_images.py
+          
+          # Determine if we're on a release branch and need to force rebuild
+          BRANCH="${{ needs.setup.outputs.branch }}"
+          FORCE_REBUILD=""
+          if [[ "$BRANCH" == *"release"* ]]; then
+            echo "::notice::Release branch detected. Using --force-rebuild to ensure clean build."
+            FORCE_REBUILD="--force-rebuild"
+          fi
+          
           i=0; until [ "$i" -ge 3 ]; do
             IMAGES=$(echo '${{ toJson(matrix.cfg) }}' | ./tools/test/build_images.py \
-                --cache-repo ghcr.io/${{ github.repository }} \ 
-                --build-no-cache \
-                --branch "${{ needs.setup.outputs.branch }}" ./etc/docker/test || echo "")
+                --cache-repo ghcr.io/${{ github.repository }} \
+                --branch "${{ needs.setup.outputs.branch }}" \
+                ${FORCE_REBUILD} ./etc/docker/test || echo "")
             if [[ -n $IMAGES ]]; then break;
             else
               i=$((i+1)); sleep 5;
