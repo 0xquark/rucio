@@ -137,6 +137,9 @@ FROM rucio-runtime as requirements
         python3 -m pip --no-cache-dir install --upgrade -r requirements/requirements.server.txt -r requirements/requirements.dev.txt
 
     COPY pyproject.toml .flake8 .pep8 .pycodestyle pylintrc setup.py setup_rucio.py setup_rucio_client.py setup_webui.py ./
+    RUN python3 setup_rucio.py bdist_wheel && \
+        python3 -m pip --no-cache-dir install --upgrade \
+        --force-reinstall --no-deps dist/rucio-*.whl
     RUN python3 -m pip --no-cache-dir install --upgrade --force-reinstall --no-deps .[oracle,postgresql,mysql,kerberos,saml,dev] && \
         python3 -m pip list
 
