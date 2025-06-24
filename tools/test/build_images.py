@@ -22,6 +22,7 @@ import pathlib
 import subprocess
 import sys
 from functools import partial
+import hashlib
 
 # mostly for checking the version in automated scripts, similar to sys.version_info
 VERSION: tuple[int] = (2, )
@@ -60,15 +61,27 @@ def build_images(matrix, script_args):
             image_identifier = buildargs.IMAGE_IDENTIFIER
             if script_args.branch:
                 branch = str(script_args.branch).lstrip('refs/heads/')
-                if branch.startswith('release-'):
-                    image_identifier += '-' + branch.lstrip('release-').lower()
+                # Handle both release-X and release/X branch formats
+                if branch.startswith('release-') or branch.startswith('release/'):
+                    # Extract the version number regardless of format
+                    if branch.startswith('release/'):
+                        version = branch.split('/', 1)[1]
+                    else:
+                        version = branch.lstrip('release-')
+                    image_identifier += '-' + version.lower()
+                # For non-master branches, add a unique identifier to prevent cache conflicts
+                elif branch != 'master':
+                    # Add a short hash based on branch name to make the tag unique
+                    short_hash = hashlib.md5(branch.encode()).hexdigest()[:6]
+                    image_identifier += f'-{short_hash}'
             imagetag = f'rucio-{image_identifier}:{dist.lower()}{buildargs_tags}'
             if script_args.cache_repo:
                 imagetag = script_args.cache_repo.lower() + '/' + imagetag
             cache_args = ()
             if script_args.build_no_cache:
                 cache_args = ('--no-cache', '--pull-always' if use_podman else '--pull')
-            elif script_args.cache_repo:
+            elif script_args.cache_repo and not script_args.force_rebuild:
+                # Skip pulling from registry if force_rebuild is set
                 args = ('docker', 'pull', imagetag)
                 print("Running", " ".join(args), file=sys.stderr, flush=True)
                 subprocess.run(args, stdout=sys.stderr, check=False)
@@ -79,6 +92,10 @@ def build_images(matrix, script_args):
                 buildkit_cache_args += ('--cache-from', os.environ['BUILDX_CACHE_FROM'])
             if os.environ.get('BUILDX_CACHE_TO'):
                 buildkit_cache_args += ('--cache-to', os.environ['BUILDX_CACHE_TO'])
+            if script_args.cache_repo and not script_args.build_no_cache and not script_args.force_rebuild:
+                # Add registry cache as secondary cache source (Optional)
+                cache_from_registry = f'type=registry,ref={imagetag}'
+                buildkit_cache_args += ('--cache-from', cache_from_registry)
 
             # add image to output
             images[imagetag] = {DIST_KEY: dist, **buildargs._asdict()}
@@ -147,6 +164,8 @@ def build_arguments(parser):
                         help='the directory of Dockerfiles')
     parser.add_argument('-n', '--build-no-cache', dest='build_no_cache', action='store_true',
                         help='build images without cache')
+    parser.add_argument('-f', '--force-rebuild', dest='force_rebuild', action='store_true',
+                        help='force rebuild of image without pulling from registry cache first')
     parser.add_argument('-r', '--cache-repo', dest='cache_repo', type=str, default='ghcr.io/rucio/rucio',
                         help='use the following cache repository, like ghcr.io/USER/REPO')
     parser.add_argument('-d', '--download-only', dest='download_only', action='store_true',
