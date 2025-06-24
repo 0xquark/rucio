@@ -97,6 +97,10 @@ def build_images(matrix, script_args):
                 cache_from_registry = f'type=registry,ref={imagetag}'
                 buildkit_cache_args += ('--cache-from', cache_from_registry)
 
+            # If force rebuild is requested, ignore any BuildKit cache sources
+            if script_args.force_rebuild:
+                buildkit_cache_args = ()
+
             # add image to output
             images[imagetag] = {DIST_KEY: dist, **buildargs._asdict()}
 
