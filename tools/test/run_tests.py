@@ -289,9 +289,6 @@ def run_with_httpd(
                 },
                 'ruciodb': {
                     'profiles': ['donotstart'],
-                },
-                'rucioclient': {
-                    'profiles': ['donotstart'],
                 }
             }
         })
