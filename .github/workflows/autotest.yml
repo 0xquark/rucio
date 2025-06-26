@@ -177,10 +177,7 @@ jobs:
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-autotest-${{ matrix.cfg.DIST }}-${{ matrix.cfg.PYTHON }}-${{ hashFiles('etc/docker/test/*.Dockerfile', '**/requirements*.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-autotest-${{ matrix.cfg.DIST }}-${{ matrix.cfg.PYTHON }}-
-            ${{ runner.os }}-buildx-autotest-${{ matrix.cfg.DIST }}-
-            ${{ runner.os }}-buildx-autotest-
+
       - name: Build images
         id: images
         shell: bash
