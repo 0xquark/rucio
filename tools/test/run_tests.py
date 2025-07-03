@@ -238,11 +238,16 @@ def run_test_directly(
     tests: list[str],
 ):
     pod_net_arg = ['--pod', pod] if use_podman else []
-    scripts_to_run = ' && '.join(
-        [
-            './tools/test/test.sh' + (' -p' if tests else ''),
-        ]
-    )
+    
+    # Debug and test scripts to run
+    scripts_to_run = ' && '.join([
+        # Debug the Python environment
+        'python3 ./tools/test/debug_env.py || true',
+        # Install SQLAlchemy directly if needed
+        'python3 -m pip install --no-cache-dir sqlalchemy || true',
+        # Run the actual tests
+        './tools/test/test.sh' + (' -p' if tests else '')
+    ])
 
     try:
         if tests:
@@ -348,6 +353,20 @@ def run_with_httpd(
             # Wait for container to be ready
             print("Waiting for container to be ready...", file=sys.stderr, flush=True)
             time.sleep(5)  # Give the container a moment to start up
+            
+            # Debug the Python environment
+            print("Debugging Python environment...", file=sys.stderr, flush=True)
+            try:
+                run('docker', *namespace_args, 'exec', rucio_container, 'python3', './tools/test/debug_env.py')
+            except subprocess.CalledProcessError:
+                print("WARNING: Environment debugging failed", file=sys.stderr, flush=True)
+            
+            # Install SQLAlchemy directly if needed
+            print("Ensuring SQLAlchemy is installed...", file=sys.stderr, flush=True)
+            try:
+                run('docker', *namespace_args, 'exec', rucio_container, 'python3', '-m', 'pip', 'install', '--no-cache-dir', 'sqlalchemy')
+            except subprocess.CalledProcessError:
+                print("WARNING: SQLAlchemy installation failed", file=sys.stderr, flush=True)
 
             # Running test.sh
             if tests:
