@@ -52,6 +52,8 @@ def env_args(caseenv):
     environment_args = list(itertools.chain(*map(lambda x: ('--env', f'{x[0]}={x[1]}'), caseenv.items())))
     environment_args.append('--env')
     environment_args.append('GITHUB_ACTIONS')
+    # Add RUCIO_SOURCE_DIR environment variable
+    environment_args.extend(['--env', 'RUCIO_SOURCE_DIR=/usr/local/src/rucio'])
     return environment_args
 
 
@@ -248,7 +250,8 @@ def run_test_directly(
         # Get current directory to mount source code
         current_dir = os.getcwd()
 
-        # Running rucio container with source code mounted
+        # Prepare source code directory in container
+        source_dir = "/usr/local/src/rucio"
         run(
             'docker',
             *namespace_args,
@@ -261,6 +264,8 @@ def run_test_directly(
             '-v', f'{current_dir}/tools:/opt/rucio/tools:Z',
             '-v', f'{current_dir}/tests:/opt/rucio/tests:Z',
             '-v', f'{current_dir}/etc:/opt/rucio/etc:Z',
+            # Copy source code for imports
+            '-v', f'{current_dir}:{source_dir}:Z',
             *(env_args(caseenv)),
             runtime_image,
             'sh',
@@ -293,6 +298,9 @@ def run_with_httpd(
         # Get current directory to mount source code
         current_dir = os.getcwd()
         
+        # Prepare source code directory in container
+        source_dir = "/usr/local/src/rucio"
+        
         compose_override_content = yaml.dump({
             'services': {
                 'rucio': {
@@ -304,6 +312,8 @@ def run_with_httpd(
                         f'{current_dir}/tools:/opt/rucio/tools:Z',
                         f'{current_dir}/tests:/opt/rucio/tests:Z',
                         f'{current_dir}/etc:/opt/rucio/etc:Z',
+                        # Copy source code for imports
+                        f'{current_dir}:{source_dir}:Z',
                     ],
                 },
                 'ruciodb': {

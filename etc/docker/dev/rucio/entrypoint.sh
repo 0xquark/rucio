@@ -21,6 +21,16 @@ fi
 
 mkdir -p "$RUCIO_HOME/etc"
 
+# Add Rucio to Python path
+if [ -d "$RUCIO_HOME/lib" ]; then
+    # Create .pth file in the virtual environment site-packages to add Rucio to Python path
+    echo "Creating Python path file for Rucio"
+    SITE_PACKAGES=$(python3 -c "import site; print(site.getsitepackages()[0])")
+    echo "$RUCIO_HOME/lib" > "$SITE_PACKAGES/rucio.pth"
+    # Also install git for policy package installation
+    dnf install -y git
+fi
+
 generate_rucio_cfg(){
   	local override=$1
   	local destination=$2

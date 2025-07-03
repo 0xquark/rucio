@@ -9,7 +9,7 @@ FROM almalinux:9.1 as base
     ENV PYTHON_VENV="/opt/venv"
     ENV PATH="${PYTHON_VENV}/bin:${PATH}"
     ENV PYTHON_310_PATCH_VERSION="4"
-    ENV PYTHONPATH="/opt/rucio/lib:${PYTHONPATH}"
+    ENV RUCIO_HOME="/opt/rucio"
 
 FROM base as oracle-client
     RUN dnf install -y libnsl libaio nodejs npm
@@ -60,7 +60,7 @@ FROM python as gfal2
             wget https://archives.boost.io/release/1.80.0/source/boost_1_80_0.tar.gz && \
             tar -xvzf boost_1_80_0.tar.gz && \
             cd boost_1_80_0 && \
-            ./bootstrap.sh --with-libraries=python --with-python=/usr/bin/python3.10 --prefix=/usr --libdir=/usr/local/lib && \
+            ./bootstrap.sh --with-libraries=python --with-python=/usr/bin/python3.10 --prefix=/usr/ --libdir=/usr/local/lib && \
             ./b2 --with-python --libdir=/usr/local/lib --link=shared && \
             cp /usr/local/src/boost_1_80_0/stage/lib/lib* /usr/lib64/ && \
             dnf install -y git dnf-plugins-core git rpm-build tree which cmake make gcc gcc-c++ && \
@@ -106,7 +106,8 @@ FROM python as rucio-runtime
         sqlite \
         gfal2-devel \
         nodejs npm \
-        glibc-langpack-en
+        glibc-langpack-en \
+        git
 
     # Set up directories and permissions for mounting source code
     RUN mkdir -p /opt/rucio/lib /opt/rucio/bin /opt/rucio/tools /opt/rucio/etc /opt/rucio/tests && \
@@ -128,6 +129,13 @@ FROM python as rucio-runtime
     COPY etc/certs/ruciouser.key.pem /opt/rucio/etc/ruciouser.key.pem
     RUN chmod 0400 /etc/grid-security/hostkey.pem && \
         chmod 0400 /opt/rucio/etc/ruciouser.key.pem
+
+    # Copy entrypoint script
+    COPY etc/docker/dev/rucio/entrypoint.sh /usr/local/bin/entrypoint.sh
+    RUN chmod +x /usr/local/bin/entrypoint.sh
+
+    # Set environment variable for source directory
+    ENV RUCIO_SOURCE_DIR="/usr/local/src/rucio"
 
 FROM rucio-runtime as requirements
     # Install Python dependencies
@@ -162,18 +170,7 @@ FROM requirements as final
     VOLUME /opt/rucio/bin
     VOLUME /opt/rucio/tools
     VOLUME /opt/rucio/tests
+    VOLUME /opt/rucio/etc
 
-    # Create a directory structure for Rucio source code
-    RUN mkdir -p /usr/local/src/rucio/lib /usr/local/src/rucio/bin /usr/local/src/rucio/tools /usr/local/src/rucio/etc /usr/local/src/rucio/tests
-
-    # Create symbolic links to make tools/test/test.sh work correctly
-    RUN ln -sf /opt/rucio/lib /usr/local/src/rucio/lib && \
-        ln -sf /opt/rucio/bin /usr/local/src/rucio/bin && \
-        ln -sf /opt/rucio/tools /usr/local/src/rucio/tools && \
-        ln -sf /opt/rucio/tests /usr/local/src/rucio/tests && \
-        ln -sf /opt/rucio/etc /usr/local/src/rucio/etc
-
-    # Create .pth file to make Python find the rucio module
-    RUN echo "/opt/rucio/lib" > ${PYTHON_VENV}/lib/python${PYTHON}/site-packages/rucio.pth
-
+    ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
     CMD ["httpd","-D","FOREGROUND"] 
