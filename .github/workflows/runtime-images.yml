@@ -1,0 +1,103 @@
+name: Build Runtime Images
+
+on:
+  workflow_call:
+    outputs:
+      py39_image:
+        description: "Python 3.9 runtime image tag"
+        value: ${{ jobs.build_runtime_images.outputs.py39_image }}
+      py310_image:
+        description: "Python 3.10 runtime image tag"
+        value: ${{ jobs.build_runtime_images.outputs.py310_image }}
+
+jobs:
+  build_runtime_images:
+    name: Build Runtime Images
+    runs-on: ubuntu-latest
+    outputs:
+      py39_image: ${{ steps.image_tags.outputs.py39_image }}
+      py310_image: ${{ steps.image_tags.outputs.py310_image }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@2b51285047da1547ffb1b2203d8be4c0af6b1f20 # v3.2.0
+      
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # v3.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Calculate image tags based on file hashes
+        id: image_tags
+        run: |
+          # Files that affect the build
+          FILES_TO_HASH="etc/docker/test/alma9.Dockerfile requirements/requirements.server.txt requirements/requirements.dev.txt"
+          
+          # Calculate hash for Python 3.9
+          PY39_HASH=$(echo "PYTHON=3.9" | cat - $FILES_TO_HASH | sha256sum | cut -d' ' -f1 | head -c 12)
+          PY39_IMAGE="ghcr.io/${{ github.repository }}/rucio-dev-runtime:py39-${PY39_HASH}"
+          echo "py39_image=${PY39_IMAGE}" >> $GITHUB_OUTPUT
+          echo "Python 3.9 image tag: ${PY39_IMAGE}"
+          
+          # Calculate hash for Python 3.10
+          PY310_HASH=$(echo "PYTHON=3.10" | cat - $FILES_TO_HASH | sha256sum | cut -d' ' -f1 | head -c 12)
+          PY310_IMAGE="ghcr.io/${{ github.repository }}/rucio-dev-runtime:py310-${PY310_HASH}"
+          echo "py310_image=${PY310_IMAGE}" >> $GITHUB_OUTPUT
+          echo "Python 3.10 image tag: ${PY310_IMAGE}"
+      
+      - name: Check if Python 3.9 image exists
+        id: check_py39_image
+        run: |
+          if docker manifest inspect ${{ steps.image_tags.outputs.py39_image }} > /dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Image already exists, skipping build"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Image does not exist, will build"
+          fi
+      
+      - name: Build and push Python 3.9 image
+        if: steps.check_py39_image.outputs.exists != 'true'
+        uses: docker/build-push-action@2cdde995de11925a030ce8070c3d77a52ffcf1c0 # v5.3.0
+        with:
+          context: .
+          file: etc/docker/test/alma9.Dockerfile
+          target: rucio-runtime
+          build-args: |
+            PYTHON=3.9
+          push: true
+          tags: ${{ steps.image_tags.outputs.py39_image }}
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}/rucio-dev-runtime:py39-buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}/rucio-dev-runtime:py39-buildcache,mode=max
+          platforms: linux/amd64
+      
+      - name: Check if Python 3.10 image exists
+        id: check_py310_image
+        run: |
+          if docker manifest inspect ${{ steps.image_tags.outputs.py310_image }} > /dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Image already exists, skipping build"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Image does not exist, will build"
+          fi
+      
+      - name: Build and push Python 3.10 image
+        if: steps.check_py310_image.outputs.exists != 'true'
+        uses: docker/build-push-action@2cdde995de11925a030ce8070c3d77a52ffcf1c0 # v5.3.0
+        with:
+          context: .
+          file: etc/docker/test/alma9.Dockerfile
+          target: rucio-runtime
+          build-args: |
+            PYTHON=3.10
+          push: true
+          tags: ${{ steps.image_tags.outputs.py310_image }}
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}/rucio-dev-runtime:py310-buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}/rucio-dev-runtime:py310-buildcache,mode=max
+          platforms: linux/amd64 

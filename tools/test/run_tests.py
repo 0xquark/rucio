@@ -66,11 +66,9 @@ def stringify_dict(inp: dict):
     return {str(k): str(v) for k, v in inp.items()}
 
 
-def find_image(images: dict, case: dict):
-    for image, idgroup in images.items():
-        if matches(idgroup, case):
-            return image
-    raise RuntimeError("Could not find image for case " + str(case))
+def get_runtime_image(runtime_images: dict, case: dict):
+    python_version = case["PYTHON"]
+    return runtime_images.get(python_version)
 
 
 def case_id(case: dict) -> str:
@@ -82,7 +80,7 @@ def case_log(caseid, msg, file=sys.stderr):
     print(caseid, msg, file=file, flush=True)
 
 
-def run_tests(cases: list, images: dict, tests: Optional[list[str]] = None):
+def run_tests(cases: list, runtime_images: dict, tests: Optional[list[str]] = None):
     use_podman = 'USE_PODMAN' in os.environ and os.environ['USE_PODMAN'] == '1'
     parallel = 'PARALLEL_AUTOTESTS' in os.environ and os.environ['PARALLEL_AUTOTESTS'] == '1'
     failfast = 'PARALLEL_AUTOTESTS_FAILFAST' in os.environ and os.environ['PARALLEL_AUTOTESTS_FAILFAST'] == '1'
@@ -95,7 +93,7 @@ def run_tests(cases: list, images: dict, tests: Optional[list[str]] = None):
         use_httpd = case.get('RUN_HTTPD', True)
         return {
             'caseenv': stringify_dict(case),
-            'image': find_image(images=images, case=case),
+            'runtime_image': get_runtime_image(runtime_images=runtime_images, case=case),
             'use_podman': use_podman,
             'use_namespace': use_podman and parallel,
             'use_httpd': use_httpd,
@@ -174,7 +172,7 @@ def run_case_logger(run_case_kwargs: dict, stdlog=sys.stderr):
     return True
 
 
-def run_case(caseenv, image, use_podman, use_namespace, use_httpd, copy_rucio_logs, logs_dir: pathlib.Path, tests: list[str]):
+def run_case(caseenv, runtime_image, use_podman, use_namespace, use_httpd, copy_rucio_logs, logs_dir: pathlib.Path, tests: list[str]):
     if use_namespace:
         namespace = str(uuid.uuid4())
         namespace_args = ['--namespace', namespace]
@@ -183,24 +181,24 @@ def run_case(caseenv, image, use_podman, use_namespace, use_httpd, copy_rucio_lo
         namespace_args = []
         namespace_env = {}
 
-    run('docker', 'image', 'ls', image)
+    run('docker', 'image', 'ls', runtime_image)
 
     pod = ""
     if use_podman:
-        print("*** Starting with pod for", {**caseenv, "IMAGE": image}, file=sys.stderr, flush=True)
+        print("*** Starting with pod for", {**caseenv, "IMAGE": runtime_image}, file=sys.stderr, flush=True)
         stdout = run('podman', *namespace_args, 'pod', 'create', return_stdout=True)
         pod = stdout.decode().strip()
         if not pod:
             raise RuntimeError("Could not determine pod id")
     else:
-        print("*** Starting", {**caseenv, "IMAGE": image}, file=sys.stderr, flush=True)
+        print("*** Starting", {**caseenv, "IMAGE": runtime_image}, file=sys.stderr, flush=True)
 
     try:
         if use_httpd:
             print("* Using httpd for test", file=sys.stderr, flush=True)
             success = run_with_httpd(
                 caseenv=caseenv,
-                image=image,
+                runtime_image=runtime_image,
                 namespace_args=namespace_args,
                 namespace_env=namespace_env,
                 copy_rucio_logs=copy_rucio_logs,
@@ -211,14 +209,14 @@ def run_case(caseenv, image, use_podman, use_namespace, use_httpd, copy_rucio_lo
             print("* Running test directly without httpd", file=sys.stderr, flush=True)
             success = run_test_directly(
                 caseenv=caseenv,
-                image=image,
+                runtime_image=runtime_image,
                 use_podman=use_podman,
                 pod=pod,
                 namespace_args=namespace_args,
                 tests=tests,
             )
     finally:
-        print("*** Finalizing", {**caseenv, "IMAGE": image}, file=sys.stderr, flush=True)
+        print("*** Finalizing", {**caseenv, "IMAGE": runtime_image}, file=sys.stderr, flush=True)
         if pod:
             run('podman', *namespace_args, 'pod', 'stop', '-t', '10', pod, check=False)
             run('podman', *namespace_args, 'pod', 'rm', '--force', pod, check=False)
@@ -229,7 +227,7 @@ def run_case(caseenv, image, use_podman, use_namespace, use_httpd, copy_rucio_lo
 
 def run_test_directly(
     caseenv: dict[str, str],
-    image: str,
+    runtime_image: str,
     use_podman: bool,
     pod: str,
     namespace_args: list[str],
@@ -247,15 +245,24 @@ def run_test_directly(
             caseenv = dict(caseenv)
             caseenv['TESTS'] = ' '.join(tests)
 
-        # Running rucio container from given image with special entrypoint
+        # Get current directory to mount source code
+        current_dir = os.getcwd()
+
+        # Running rucio container with source code mounted
         run(
             'docker',
             *namespace_args,
             'run',
             '--rm',
             *pod_net_arg,
+            # Mount source code into container
+            '-v', f'{current_dir}/lib:/opt/rucio/lib:Z',
+            '-v', f'{current_dir}/bin:/opt/rucio/bin:Z',
+            '-v', f'{current_dir}/tools:/opt/rucio/tools:Z',
+            '-v', f'{current_dir}/tests:/opt/rucio/tests:Z',
+            '-v', f'{current_dir}/etc:/opt/rucio/etc:Z',
             *(env_args(caseenv)),
-            image,
+            runtime_image,
             'sh',
             '-c',
             scripts_to_run,
@@ -265,7 +272,7 @@ def run_test_directly(
     except subprocess.CalledProcessError as error:
         print(
             f"** Running tests '{error.cmd}' exited with code {error.returncode}",
-            {**caseenv, "IMAGE": image},
+            {**caseenv, "IMAGE": runtime_image},
             file=sys.stderr,
             flush=True,
         )
@@ -274,7 +281,7 @@ def run_test_directly(
 
 def run_with_httpd(
     caseenv: dict[str, str],
-    image: str,
+    runtime_image: str,
     namespace_args: list[str],
     namespace_env: dict[str, str],
     copy_rucio_logs: bool,
@@ -283,11 +290,21 @@ def run_with_httpd(
 ) -> bool:
 
     with (NamedTemporaryFile() as compose_override_file):
+        # Get current directory to mount source code
+        current_dir = os.getcwd()
+        
         compose_override_content = yaml.dump({
             'services': {
                 'rucio': {
-                    'image': image,
+                    'image': runtime_image,
                     'environment': [f'{k}={v}' for k, v in caseenv.items()],
+                    'volumes': [
+                        f'{current_dir}/lib:/opt/rucio/lib:Z',
+                        f'{current_dir}/bin:/opt/rucio/bin:Z',
+                        f'{current_dir}/tools:/opt/rucio/tools:Z',
+                        f'{current_dir}/tests:/opt/rucio/tests:Z',
+                        f'{current_dir}/etc:/opt/rucio/etc:Z',
+                    ],
                 },
                 'ruciodb': {
                     'profiles': ['donotstart'],
@@ -326,7 +343,7 @@ def run_with_httpd(
         except subprocess.CalledProcessError as error:
             print(
                 f"** Process '{error.cmd}' exited with code {error.returncode}",
-                {**caseenv, "IMAGE": image},
+                {**caseenv, "IMAGE": runtime_image},
                 file=sys.stderr,
                 flush=True,
             )
@@ -340,7 +357,7 @@ def run_with_httpd(
                 except Exception:
                     print(
                         "** Error on retrieving logs for",
-                        {**caseenv, "IMAGE": image},
+                        {**caseenv, "IMAGE": runtime_image},
                         '\n',
                         traceback.format_exc(),
                         '\n**',
@@ -354,7 +371,7 @@ def run_with_httpd(
 def main():
     obj = json.load(sys.stdin)
     cases = (obj["matrix"],) if isinstance(obj["matrix"], dict) else obj["matrix"]
-    run_tests(cases, obj["images"])
+    run_tests(cases, obj["runtime_images"])
 
 
 if __name__ == "__main__":
