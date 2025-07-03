@@ -54,6 +54,8 @@ def env_args(caseenv):
     environment_args.append('GITHUB_ACTIONS')
     # Add RUCIO_SOURCE_DIR environment variable
     environment_args.extend(['--env', 'RUCIO_SOURCE_DIR=/usr/local/src/rucio'])
+    # Add PYTHONPATH to include mounted source code
+    environment_args.extend(['--env', 'PYTHONPATH=/opt/rucio/lib:/usr/local/src/rucio/lib'])
     return environment_args
 
 
@@ -238,7 +240,6 @@ def run_test_directly(
     pod_net_arg = ['--pod', pod] if use_podman else []
     scripts_to_run = ' && '.join(
         [
-            setup_script,
             './tools/test/test.sh' + (' -p' if tests else ''),
         ]
     )
@@ -302,11 +303,16 @@ def run_with_httpd(
         # Prepare source code directory in container
         source_dir = "/usr/local/src/rucio"
         
+        # Add environment variables to ensure Python can find modules
+        env_vars = [f'{k}={v}' for k, v in caseenv.items()]
+        env_vars.append(f'PYTHONPATH=/opt/rucio/lib:{source_dir}/lib')
+        env_vars.append(f'RUCIO_SOURCE_DIR={source_dir}')
+        
         compose_override_content = yaml.dump({
             'services': {
                 'rucio': {
                     'image': runtime_image,
-                    'environment': [f'{k}={v}' for k, v in caseenv.items()],
+                    'environment': env_vars,
                     'volumes': [
                         f'{current_dir}/lib:/opt/rucio/lib:Z',
                         f'{current_dir}/bin:/opt/rucio/bin:Z',
@@ -339,19 +345,9 @@ def run_with_httpd(
             # Start docker compose
             run('docker', 'compose', '-p', project, *up_down_args, 'up', '-d')
 
-            # Wait for dependencies to be installed
-            print("Waiting for dependencies to be installed...", file=sys.stderr, flush=True)
-            try:
-                run('docker', *namespace_args, 'exec', rucio_container, 'python', '-c', 
-                    'import time; import importlib.util; '
-                    'for _ in range(30): '
-                    '    if importlib.util.find_spec("sqlalchemy"): break; '
-                    '    print("Waiting for SQLAlchemy..."); '
-                    '    time.sleep(2); '
-                    'else: '
-                    '    raise ImportError("SQLAlchemy not available after waiting")')
-            except subprocess.CalledProcessError:
-                print("WARNING: SQLAlchemy not available after waiting", file=sys.stderr, flush=True)
+            # Wait for container to be ready
+            print("Waiting for container to be ready...", file=sys.stderr, flush=True)
+            time.sleep(5)  # Give the container a moment to start up
 
             # Running test.sh
             if tests:
