@@ -59,7 +59,7 @@ FROM python as gfal2
             wget https://archives.boost.io/release/1.80.0/source/boost_1_80_0.tar.gz && \
             tar -xvzf boost_1_80_0.tar.gz && \
             cd boost_1_80_0 && \
-            ./bootstrap.sh --with-libraries=python --with-python=/usr/bin/python3.10 --prefix=/usr --libdir=/usr/local/lib && \
+            ./bootstrap.sh --with-libraries=python --with-python=/usr/bin/python3.10 --prefix=/usr/ --libdir=/usr/local/lib && \
             ./b2 --with-python --libdir=/usr/local/lib --link=shared && \
             cp /usr/local/src/boost_1_80_0/stage/lib/lib* /usr/lib64/ && \
             dnf install -y git dnf-plugins-core git rpm-build tree which cmake make gcc gcc-c++ && \
@@ -161,5 +161,15 @@ FROM requirements as final
     VOLUME /opt/rucio/bin
     VOLUME /opt/rucio/tools
     VOLUME /opt/rucio/tests
+    
+    # Create entrypoint script to install Rucio in editable mode
+    RUN echo '#!/bin/bash\n\
+# Install Rucio in editable mode\n\
+cd /opt/rucio && pip install -e .\n\
+\n\
+# Execute the command passed to docker run\n\
+exec "$@"' > /entrypoint.sh && \
+    chmod +x /entrypoint.sh
 
+    ENTRYPOINT ["/entrypoint.sh"]
     CMD ["httpd","-D","FOREGROUND"] 

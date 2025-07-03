@@ -261,6 +261,13 @@ def run_test_directly(
             '-v', f'{current_dir}/tools:/opt/rucio/tools:Z',
             '-v', f'{current_dir}/tests:/opt/rucio/tests:Z',
             '-v', f'{current_dir}/etc:/opt/rucio/etc:Z',
+            # Mount setup files for editable installation
+            '-v', f'{current_dir}/setup.py:/opt/rucio/setup.py:Z',
+            '-v', f'{current_dir}/setup_rucio.py:/opt/rucio/setup_rucio.py:Z',
+            '-v', f'{current_dir}/setup_rucio_client.py:/opt/rucio/setup_rucio_client.py:Z',
+            '-v', f'{current_dir}/setup_webui.py:/opt/rucio/setup_webui.py:Z',
+            '-v', f'{current_dir}/setuputil.py:/opt/rucio/setuputil.py:Z',
+            '-v', f'{current_dir}/pyproject.toml:/opt/rucio/pyproject.toml:Z',
             *(env_args(caseenv)),
             runtime_image,
             'sh',
@@ -304,6 +311,13 @@ def run_with_httpd(
                         f'{current_dir}/tools:/opt/rucio/tools:Z',
                         f'{current_dir}/tests:/opt/rucio/tests:Z',
                         f'{current_dir}/etc:/opt/rucio/etc:Z',
+                        # Mount setup files for editable installation
+                        f'{current_dir}/setup.py:/opt/rucio/setup.py:Z',
+                        f'{current_dir}/setup_rucio.py:/opt/rucio/setup_rucio.py:Z',
+                        f'{current_dir}/setup_rucio_client.py:/opt/rucio/setup_rucio_client.py:Z',
+                        f'{current_dir}/setup_webui.py:/opt/rucio/setup_webui.py:Z',
+                        f'{current_dir}/setuputil.py:/opt/rucio/setuputil.py:Z',
+                        f'{current_dir}/pyproject.toml:/opt/rucio/pyproject.toml:Z',
                     ],
                 },
                 'ruciodb': {
