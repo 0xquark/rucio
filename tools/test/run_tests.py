@@ -238,6 +238,7 @@ def run_test_directly(
     pod_net_arg = ['--pod', pod] if use_podman else []
     scripts_to_run = ' && '.join(
         [
+            setup_script,
             './tools/test/test.sh' + (' -p' if tests else ''),
         ]
     )
@@ -337,6 +338,20 @@ def run_with_httpd(
         try:
             # Start docker compose
             run('docker', 'compose', '-p', project, *up_down_args, 'up', '-d')
+
+            # Wait for dependencies to be installed
+            print("Waiting for dependencies to be installed...", file=sys.stderr, flush=True)
+            try:
+                run('docker', *namespace_args, 'exec', rucio_container, 'python', '-c', 
+                    'import time; import importlib.util; '
+                    'for _ in range(30): '
+                    '    if importlib.util.find_spec("sqlalchemy"): break; '
+                    '    print("Waiting for SQLAlchemy..."); '
+                    '    time.sleep(2); '
+                    'else: '
+                    '    raise ImportError("SQLAlchemy not available after waiting")')
+            except subprocess.CalledProcessError:
+                print("WARNING: SQLAlchemy not available after waiting", file=sys.stderr, flush=True)
 
             # Running test.sh
             if tests:

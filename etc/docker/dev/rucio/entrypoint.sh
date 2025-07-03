@@ -20,7 +20,7 @@ if [ -z "$RUCIO_HOME" ]; then
 fi
 
 mkdir -p "$RUCIO_HOME/etc"
-
+            
 # Add Rucio to Python path
 if [ -d "$RUCIO_HOME/lib" ]; then
     # Create .pth file in the virtual environment site-packages to add Rucio to Python path
@@ -28,13 +28,10 @@ if [ -d "$RUCIO_HOME/lib" ]; then
     SITE_PACKAGES=$(python3 -c "import site; print(site.getsitepackages()[0])")
     echo "$RUCIO_HOME/lib" > "$SITE_PACKAGES/rucio.pth"
     
-    # Install git for policy package installation
-    echo "Installing git..."
-    dnf install -y git
-    
     # Install Python requirements
     if [ -d "$RUCIO_SOURCE_DIR/requirements" ]; then
         echo "Installing Python requirements..."
+        python3 -m pip install --no-cache-dir --upgrade pip
         python3 -m pip install --no-cache-dir -r "$RUCIO_SOURCE_DIR/requirements/requirements.server.txt"
         python3 -m pip install --no-cache-dir -r "$RUCIO_SOURCE_DIR/requirements/requirements.dev.txt"
         
@@ -88,4 +85,11 @@ fi
 
 update-ca-trust
 
+# Verify SQLAlchemy is installed before proceeding
+python3 -c "import sqlalchemy; print('SQLAlchemy version:', sqlalchemy.__version__)" || {
+    echo "ERROR: SQLAlchemy not installed. Installing again..."
+    python3 -m pip install --no-cache-dir sqlalchemy
+}
+
+echo "Environment setup complete, starting command..."
 exec "$@"
