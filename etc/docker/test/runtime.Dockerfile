@@ -9,6 +9,7 @@ FROM almalinux:9.1 as base
     ENV PYTHON_VENV="/opt/venv"
     ENV PATH="${PYTHON_VENV}/bin:${PATH}"
     ENV PYTHON_310_PATCH_VERSION="4"
+    ENV PYTHONPATH="/opt/rucio/lib:${PYTHONPATH}"
 
 FROM base as oracle-client
     RUN dnf install -y libnsl libaio nodejs npm
@@ -59,7 +60,7 @@ FROM python as gfal2
             wget https://archives.boost.io/release/1.80.0/source/boost_1_80_0.tar.gz && \
             tar -xvzf boost_1_80_0.tar.gz && \
             cd boost_1_80_0 && \
-            ./bootstrap.sh --with-libraries=python --with-python=/usr/bin/python3.10 --prefix=/usr/ --libdir=/usr/local/lib && \
+            ./bootstrap.sh --with-libraries=python --with-python=/usr/bin/python3.10 --prefix=/usr --libdir=/usr/local/lib && \
             ./b2 --with-python --libdir=/usr/local/lib --link=shared && \
             cp /usr/local/src/boost_1_80_0/stage/lib/lib* /usr/lib64/ && \
             dnf install -y git dnf-plugins-core git rpm-build tree which cmake make gcc gcc-c++ && \
@@ -161,15 +162,18 @@ FROM requirements as final
     VOLUME /opt/rucio/bin
     VOLUME /opt/rucio/tools
     VOLUME /opt/rucio/tests
-    
-    # Create entrypoint script to install Rucio in editable mode
-    RUN echo '#!/bin/bash\n\
-# Install Rucio in editable mode\n\
-cd /opt/rucio && pip install -e .\n\
-\n\
-# Execute the command passed to docker run\n\
-exec "$@"' > /entrypoint.sh && \
-    chmod +x /entrypoint.sh
 
-    ENTRYPOINT ["/entrypoint.sh"]
+    # Create a directory structure for Rucio source code
+    RUN mkdir -p /usr/local/src/rucio/lib /usr/local/src/rucio/bin /usr/local/src/rucio/tools /usr/local/src/rucio/etc /usr/local/src/rucio/tests
+
+    # Create symbolic links to make tools/test/test.sh work correctly
+    RUN ln -sf /opt/rucio/lib /usr/local/src/rucio/lib && \
+        ln -sf /opt/rucio/bin /usr/local/src/rucio/bin && \
+        ln -sf /opt/rucio/tools /usr/local/src/rucio/tools && \
+        ln -sf /opt/rucio/tests /usr/local/src/rucio/tests && \
+        ln -sf /opt/rucio/etc /usr/local/src/rucio/etc
+
+    # Create .pth file to make Python find the rucio module
+    RUN echo "/opt/rucio/lib" > ${PYTHON_VENV}/lib/python${PYTHON}/site-packages/rucio.pth
+
     CMD ["httpd","-D","FOREGROUND"] 
