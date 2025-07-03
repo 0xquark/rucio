@@ -95,7 +95,7 @@ def run_tests(cases: list, images: dict, tests: Optional[list[str]] = None):
         use_httpd = case.get('RUN_HTTPD', True)
         return {
             'caseenv': stringify_dict(case),
-            'image': find_image(images=images, case=case),
+            'image': images[find_image(images=images, case=case)],
             'use_podman': use_podman,
             'use_namespace': use_podman and parallel,
             'use_httpd': use_httpd,
@@ -247,13 +247,20 @@ def run_test_directly(
             caseenv = dict(caseenv)
             caseenv['TESTS'] = ' '.join(tests)
 
-        # Running rucio container from given image with special entrypoint
+        # Get current directory for mounting source code
+        current_dir = os.path.abspath(os.path.curdir)
+        
+        # Add RUCIO_SOURCE_DIR to environment
+        caseenv['RUCIO_SOURCE_DIR'] = '/rucio_source'
+        
+        # Running rucio container from given image with source code mounted
         run(
             'docker',
             *namespace_args,
             'run',
             '--rm',
             *pod_net_arg,
+            '-v', f"{current_dir}:/rucio_source:ro",
             *(env_args(caseenv)),
             image,
             'sh',
@@ -283,11 +290,20 @@ def run_with_httpd(
 ) -> bool:
 
     with (NamedTemporaryFile() as compose_override_file):
+        # Get current directory for mounting source code
+        current_dir = os.path.abspath(os.path.curdir)
+        
+        # Add RUCIO_SOURCE_DIR to environment
+        caseenv['RUCIO_SOURCE_DIR'] = '/rucio_source'
+        
         compose_override_content = yaml.dump({
             'services': {
                 'rucio': {
                     'image': image,
                     'environment': [f'{k}={v}' for k, v in caseenv.items()],
+                    'volumes': [
+                        f"{current_dir}:/rucio_source:ro",
+                    ]
                 },
                 'ruciodb': {
                     'profiles': ['donotstart'],

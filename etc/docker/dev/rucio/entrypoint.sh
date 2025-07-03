@@ -62,6 +62,17 @@ elif [ "$RDBMS" == "postgres14" ]; then
 
 fi
 
+# Install Rucio from mounted source in editable mode
+if [ -d "$RUCIO_SOURCE_DIR" ]; then
+    echo "Installing Rucio from mounted source code at $RUCIO_SOURCE_DIR"
+    cd "$RUCIO_SOURCE_DIR"
+    python3 -m pip install -e .[oracle,postgresql,mysql,kerberos,saml,dev]
+    echo "Rucio installed successfully in editable mode"
+else
+    echo "ERROR: Rucio source directory not found at $RUCIO_SOURCE_DIR"
+    exit 1
+fi
+
 update-ca-trust
 
 exec "$@"

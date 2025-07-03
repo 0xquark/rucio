@@ -159,8 +159,16 @@ jobs:
     outputs:
       branch: ${{ steps.branch.outputs.branch }}
       matrix: ${{ steps.matrix.outputs.matrix }}
-  test:
+  
+  build-runtime-images:
     needs: setup
+    uses: ./.github/workflows/runtime-images.yml
+    with:
+      python_versions: '["3.9", "3.10"]'
+    secrets: inherit
+  
+  test:
+    needs: [setup, build-runtime-images]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -168,23 +176,29 @@ jobs:
         cfg: ${{ fromJson(needs.setup.outputs.matrix) }}
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
-      - name: Build images
-        id: images
-        shell: bash
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # v3.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Map Python version to image tag
+        id: map_image
         run: |
-          docker login https://ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
-          i=0; until [ "$i" -ge 3 ]; do
-            IMAGES=$(echo '${{ toJson(matrix.cfg) }}' | ./tools/test/build_images.py \
-                --cache-repo ghcr.io/${{ github.repository }} \
-                --branch "${{ needs.setup.outputs.branch }}" ./etc/docker/test || echo "")
-            if [[ -n $IMAGES ]]; then break;
-            else
-              i=$((i+1)); sleep 5;
-              echo "::warning::Building images failed, retrying…"
-            fi
-          done
-          docker logout https://ghcr.io
-          if [[ -z "$IMAGES" ]]; then echo "::error::Building images failed ultimately"; exit 1; fi
-          echo "images=$IMAGES" >> $GITHUB_OUTPUT
+          # Get image tags from previous job
+          IMAGE_TAGS='${{ needs.build-runtime-images.outputs.image_tags }}'
+          
+          # Get Python version from matrix config
+          PYTHON_VERSION="${{ matrix.cfg.PYTHON }}"
+          
+          # Extract the corresponding image tag
+          IMAGE_TAG=$(echo $IMAGE_TAGS | jq -r --arg py "$PYTHON_VERSION" '.[$py]')
+          
+          echo "Using image tag: $IMAGE_TAG for Python $PYTHON_VERSION"
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          
+          # Create a JSON mapping for the test script
+          IMAGES_JSON="{\"${{ matrix.cfg.DIST }},PYTHON=$PYTHON_VERSION,SUITE=${{ matrix.cfg.SUITE }}${{ matrix.cfg.RDBMS != '' && format(',RDBMS={0}', matrix.cfg.RDBMS) || '' }}\": \"$IMAGE_TAG\"}"
+          echo "images_json=$IMAGES_JSON" >> $GITHUB_OUTPUT
       - name: Run test with cfg
-        run: 'echo ''{"matrix": ${{ toJson(matrix.cfg) }}, "images": ${{ steps.images.outputs.images }} }'' | ./tools/test/run_tests.py'
+        run: 'echo ''{"matrix": ${{ toJson(matrix.cfg) }}, "images": ${{ steps.map_image.outputs.images_json }} }'' | ./tools/test/run_tests.py'

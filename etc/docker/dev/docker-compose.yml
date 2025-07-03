@@ -6,9 +6,9 @@ services:
   # ------------------------------------------------------------------
   rucioclient:
     container_name: dev-rucioclient-1
-    image: "docker.io/${DOCKER_REPO:-rucio}/rucio-dev:${RUCIO_DEV_PREFIX:-}${RUCIO_TAG:-latest}"
+    image: "docker.io/${DOCKER_REPO:-rucio}/rucio-dev-runtime:${RUCIO_DEV_PREFIX:-}${PYTHON:-3.9}-${RUCIO_TAG:-latest}"
     platform: linux/amd64
-    entrypoint: ["/rucio_source/etc/docker/dev/rucio/entrypoint.sh"]
+    entrypoint: ["/usr/local/bin/entrypoint.sh"]
     command: ["sleep", "infinity"]
     profiles:
       - client
@@ -24,10 +24,6 @@ services:
       - ../../certs/ssh/ruciouser_sshkey.pub:/root/.ssh/ruciouser_sshkey.pub:z
       - ../../certs/ssh/ruciouser_sshkey:/root/.ssh/ruciouser_sshkey:z
       - ./rucio/idpsecrets.json:/opt/rucio/etc/idpsecrets.json:ro
-      - ../../../tools:/opt/rucio/tools:Z
-      - ../../../bin:/opt/rucio/bin:Z
-      - ../../../lib:/opt/rucio/lib:Z
-      - ../../../tests:/opt/rucio/tests:Z
       - ../../../:/rucio_source:ro
     environment:
       - REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt
@@ -36,9 +32,9 @@ services:
 
   rucio:
     container_name: dev-rucio-1
-    image: "docker.io/${DOCKER_REPO:-rucio}/rucio-dev:${RUCIO_DEV_PREFIX:-}${RUCIO_TAG:-latest}"
+    image: "docker.io/${DOCKER_REPO:-rucio}/rucio-dev-runtime:${RUCIO_DEV_PREFIX:-}${PYTHON:-3.9}-${RUCIO_TAG:-latest}"
     platform: linux/amd64
-    entrypoint: ["/rucio_source/etc/docker/dev/rucio/entrypoint.sh"]
+    entrypoint: ["/usr/local/bin/entrypoint.sh"]
     command: ["httpd","-D","FOREGROUND"]
     volumes:
       - ../../certs/rucio_ca.pem:/etc/grid-security/certificates/5fca1cb1.0:ro
@@ -52,10 +48,6 @@ services:
       - ../../certs/ssh/ruciouser_sshkey.pub:/root/.ssh/ruciouser_sshkey.pub:z
       - ../../certs/ssh/ruciouser_sshkey:/root/.ssh/ruciouser_sshkey:z
       - ./rucio/idpsecrets.json:/opt/rucio/etc/idpsecrets.json:ro
-      - ../../../tools:/opt/rucio/tools:Z
-      - ../../../bin:/opt/rucio/bin:Z
-      - ../../../lib:/opt/rucio/lib:Z
-      - ../../../tests:/opt/rucio/tests:Z
       - ../../../:/rucio_source:ro
     environment:
       - REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt
