@@ -184,6 +184,12 @@ jobs:
         cfg: ${{ fromJson(needs.setup.outputs.matrix) }}
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # v3.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Run test with cfg
         env:
           PY39_RUNTIME_IMAGE: ${{ needs.setup.outputs.py39_image }}

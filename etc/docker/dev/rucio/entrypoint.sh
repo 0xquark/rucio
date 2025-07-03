@@ -27,8 +27,22 @@ if [ -d "$RUCIO_HOME/lib" ]; then
     echo "Creating Python path file for Rucio"
     SITE_PACKAGES=$(python3 -c "import site; print(site.getsitepackages()[0])")
     echo "$RUCIO_HOME/lib" > "$SITE_PACKAGES/rucio.pth"
-    # Also install git for policy package installation
+    
+    # Install git for policy package installation
+    echo "Installing git..."
     dnf install -y git
+    
+    # Install Python requirements
+    if [ -d "$RUCIO_SOURCE_DIR/requirements" ]; then
+        echo "Installing Python requirements..."
+        python3 -m pip install --no-cache-dir -r "$RUCIO_SOURCE_DIR/requirements/requirements.server.txt"
+        python3 -m pip install --no-cache-dir -r "$RUCIO_SOURCE_DIR/requirements/requirements.dev.txt"
+        
+        # Install Rucio in development mode
+        echo "Installing Rucio in development mode..."
+        cd "$RUCIO_SOURCE_DIR"
+        python3 -m pip install -e .
+    fi
 fi
 
 generate_rucio_cfg(){
