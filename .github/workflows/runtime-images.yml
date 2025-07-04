@@ -59,7 +59,7 @@ jobs:
           echo "Building images for Python versions: $PYTHON_VERSIONS"
           
           # Initialize image tags object
-          declare -A IMAGE_TAGS_MAP
+          IMAGE_TAGS="{}"
           
           for PY_VERSION in $(echo $PYTHON_VERSIONS | jq -r '.[]'); do
             echo "Processing Python version $PY_VERSION"
@@ -97,11 +97,12 @@ jobs:
               docker push $FULL_IMAGE_TAG
             fi
             
-            # Store in associative array
-            IMAGE_TAGS_MAP[$PY_VERSION]=$FULL_IMAGE_TAG
+            # Add to image tags object
+            IMAGE_TAGS=$(echo $IMAGE_TAGS | jq --arg py "$PY_VERSION" --arg tag "$FULL_IMAGE_TAG" '. + {($py): $tag}')
           done
           
-          # Convert to JSON and escape properly for GitHub Actions
-          IMAGE_TAGS_JSON=$(jq -n --arg py39 "${IMAGE_TAGS_MAP[3.9]}" --arg py310 "${IMAGE_TAGS_MAP[3.10]}" '{"3.9": $py39, "3.10": $py310}')
-          echo "image_tags=$IMAGE_TAGS_JSON" >> $GITHUB_OUTPUT
-          echo "Image tags: $IMAGE_TAGS_JSON" 
+          # Output image tags
+          # Ensure single-line JSON for GitHub output
+          COMPACT_IMAGE_TAGS=$(echo $IMAGE_TAGS | jq -c '.')
+          echo "image_tags=$COMPACT_IMAGE_TAGS" >> $GITHUB_OUTPUT
+          echo "Image tags: $COMPACT_IMAGE_TAGS" 
