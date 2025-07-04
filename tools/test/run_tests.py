@@ -67,9 +67,29 @@ def stringify_dict(inp: dict):
 
 
 def find_image(images: dict, case: dict):
-    for image, idgroup in images.items():
-        if matches(idgroup, case):
-            return image
+    # Support two mapping styles:
+    # 1. {image_tag: case_params_dict}
+    # 2. {case_key_str: image_tag}
+
+    sample_val = next(iter(images.values())) if images else None
+
+    # Style 2: values are image tags (str) and keys encode case parameters
+    if isinstance(sample_val, str):
+        for key, image_tag in images.items():
+            try:
+                key_items = [item for item in key.split(',') if '=' in item]
+                key_dict = {k: v for k, v in (kv.split('=') for kv in key_items)}
+            except ValueError:
+                key_dict = {}
+
+            if matches(key_dict, case):
+                return image_tag
+
+    # Style 1 (original): keys are image tags, values are dicts
+    for image_tag, idgroup in images.items():
+        if isinstance(idgroup, dict) and matches(idgroup, case):
+            return image_tag
+
     raise RuntimeError("Could not find image for case " + str(case))
 
 
