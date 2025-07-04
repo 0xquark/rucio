@@ -115,7 +115,7 @@ def run_tests(cases: list, images: dict, tests: Optional[list[str]] = None):
         use_httpd = case.get('RUN_HTTPD', True)
         return {
             'caseenv': stringify_dict(case),
-            'image': images[find_image(images=images, case=case)],
+            'image': images.get(find_image(images=images, case=case), find_image(images=images, case=case)),
             'use_podman': use_podman,
             'use_namespace': use_podman and parallel,
             'use_httpd': use_httpd,
