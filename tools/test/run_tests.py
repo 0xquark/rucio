@@ -272,6 +272,7 @@ def run_test_directly(
         
         # Path inside container expected by scripts
         caseenv['RUCIO_SOURCE_DIR'] = MOUNT_PATH
+        caseenv.setdefault('PYTHONPATH', MOUNT_PATH)
         
         # Running rucio container from given image with source code mounted
         run(
@@ -316,6 +317,7 @@ def run_with_httpd(
         # Path inside container expected by scripts
         MOUNT_PATH = '/usr/local/src/rucio'
         caseenv['RUCIO_SOURCE_DIR'] = MOUNT_PATH
+        caseenv.setdefault('PYTHONPATH', MOUNT_PATH)
         
         compose_override_content = yaml.dump({
             'services': {
