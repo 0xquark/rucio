@@ -160,96 +160,16 @@ jobs:
       branch: ${{ steps.branch.outputs.branch }}
       matrix: ${{ steps.matrix.outputs.matrix }}
   
-  # Build runtime images
-  runtime_images:
-    runs-on: ubuntu-latest
-    name: Build Runtime Images
-    outputs:
-      py39_image: ${{ steps.build_images.outputs.py39_image }}
-      py310_image: ${{ steps.build_images.outputs.py310_image }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Calculate cache keys
-        id: cache_keys
-        run: |
-          # Calculate hash for Python 3.9 image
-          PY39_HASH=$(find requirements -type f -name "*.txt" -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)
-          PY39_HASH="${PY39_HASH}$(sha256sum etc/docker/test/runtime.Dockerfile | cut -d' ' -f1)"
-          PY39_HASH=$(echo $PY39_HASH | sha256sum | cut -d' ' -f1 | cut -c1-12)
-          echo "py39_hash=$PY39_HASH" >> $GITHUB_OUTPUT
-          
-          # Calculate hash for Python 3.10 image
-          PY310_HASH=$(find requirements -type f -name "*.txt" -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)
-          PY310_HASH="${PY310_HASH}$(sha256sum etc/docker/test/runtime.Dockerfile | cut -d' ' -f1)"
-          PY310_HASH=$(echo $PY310_HASH | sha256sum | cut -d' ' -f1 | cut -c1-12)
-          echo "py310_hash=$PY310_HASH" >> $GITHUB_OUTPUT
-
-      - name: Set image tags
-        id: set_tags
-        run: |
-          echo "py39_image=ghcr.io/${{ github.repository }}/rucio-dev-runtime:py39-${{ steps.cache_keys.outputs.py39_hash }}" >> $GITHUB_OUTPUT
-          echo "py310_image=ghcr.io/${{ github.repository }}/rucio-dev-runtime:py310-${{ steps.cache_keys.outputs.py310_hash }}" >> $GITHUB_OUTPUT
-
-      - name: Check if Python 3.9 image exists
-        id: check_py39
-        continue-on-error: true
-        run: |
-          docker manifest inspect ${{ steps.set_tags.outputs.py39_image }} > /dev/null
-          echo "exists=$?" >> $GITHUB_OUTPUT
-
-      - name: Check if Python 3.10 image exists
-        id: check_py310
-        continue-on-error: true
-        run: |
-          docker manifest inspect ${{ steps.set_tags.outputs.py310_image }} > /dev/null
-          echo "exists=$?" >> $GITHUB_OUTPUT
-
-      - name: Build and push Python 3.9 image
-        if: steps.check_py39.outputs.exists != '0'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: etc/docker/test/runtime.Dockerfile
-          push: true
-          tags: ${{ steps.set_tags.outputs.py39_image }}
-          build-args: |
-            PYTHON=3.9
-          cache-from: type=registry,ref=${{ steps.set_tags.outputs.py39_image }}
-          cache-to: type=inline
-
-      - name: Build and push Python 3.10 image
-        if: steps.check_py310.outputs.exists != '0'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: etc/docker/test/runtime.Dockerfile
-          push: true
-          tags: ${{ steps.set_tags.outputs.py310_image }}
-          build-args: |
-            PYTHON=3.10
-          cache-from: type=registry,ref=${{ steps.set_tags.outputs.py310_image }}
-          cache-to: type=inline
-
-      - name: Output image tags
-        id: build_images
-        run: |
-          echo "py39_image=${{ steps.set_tags.outputs.py39_image }}" >> $GITHUB_OUTPUT
-          echo "py310_image=${{ steps.set_tags.outputs.py310_image }}" >> $GITHUB_OUTPUT
+  # Get or build runtime images
+  build_runtime_images:
+    needs: setup
+    uses: ./.github/workflows/runtime_image.yml
+    with:
+      python_versions: '["3.9", "3.10"]'
+    secrets: inherit
   
   test:
-    needs: [setup, runtime_images]
+    needs: [setup, build_runtime_images]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -272,9 +192,9 @@ jobs:
           
           # Set the appropriate runtime image based on Python version
           if [ "$PYTHON_VERSION" == "3.9" ]; then
-            RUNTIME_IMAGE="${{ needs.runtime_images.outputs.py39_image }}"
+            RUNTIME_IMAGE="${{ needs.build_runtime_images.outputs.py39_image }}"
           elif [ "$PYTHON_VERSION" == "3.10" ]; then
-            RUNTIME_IMAGE="${{ needs.runtime_images.outputs.py310_image }}"
+            RUNTIME_IMAGE="${{ needs.build_runtime_images.outputs.py310_image }}"
           else
             echo "Unsupported Python version: $PYTHON_VERSION"
             exit 1

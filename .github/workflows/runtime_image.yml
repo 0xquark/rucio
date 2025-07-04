@@ -2,6 +2,12 @@ name: Build Runtime Images
 
 on:
   workflow_call:
+    inputs:
+      python_versions:
+        description: 'Python versions to build images for'
+        required: false
+        default: '["3.9", "3.10"]'
+        type: string
     outputs:
       py39_image:
         description: "Python 3.9 runtime image tag"
@@ -10,7 +16,15 @@ on:
         description: "Python 3.10 runtime image tag"
         value: ${{ jobs.build_runtime_images.outputs.py310_image }}
   workflow_dispatch:
+    inputs:
+      python_versions:
+        description: 'Python versions to build images for (JSON array)'
+        required: false
+        default: '["3.9", "3.10"]'
+        type: string
   push:
+    branches:
+      - master
     paths:
       - 'requirements/**'
       - 'etc/docker/test/runtime.Dockerfile'
@@ -36,6 +50,26 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Parse Python versions
+        id: parse_versions
+        run: |
+          PYTHON_VERSIONS='${{ inputs.python_versions }}'
+          echo "Python versions: $PYTHON_VERSIONS"
+          
+          # Check if 3.9 is in the list
+          if echo "$PYTHON_VERSIONS" | grep -q "3.9"; then
+            echo "build_py39=true" >> $GITHUB_OUTPUT
+          else
+            echo "build_py39=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Check if 3.10 is in the list
+          if echo "$PYTHON_VERSIONS" | grep -q "3.10"; then
+            echo "build_py310=true" >> $GITHUB_OUTPUT
+          else
+            echo "build_py310=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Calculate cache keys
         id: cache_keys
         run: |
@@ -59,6 +93,7 @@ jobs:
 
       - name: Check if Python 3.9 image exists
         id: check_py39
+        if: steps.parse_versions.outputs.build_py39 == 'true'
         continue-on-error: true
         run: |
           docker manifest inspect ${{ steps.set_tags.outputs.py39_image }} > /dev/null
@@ -66,13 +101,14 @@ jobs:
 
       - name: Check if Python 3.10 image exists
         id: check_py310
+        if: steps.parse_versions.outputs.build_py310 == 'true'
         continue-on-error: true
         run: |
           docker manifest inspect ${{ steps.set_tags.outputs.py310_image }} > /dev/null
           echo "exists=$?" >> $GITHUB_OUTPUT
 
       - name: Build and push Python 3.9 image
-        if: steps.check_py39.outputs.exists != '0'
+        if: steps.parse_versions.outputs.build_py39 == 'true' && steps.check_py39.outputs.exists != '0'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -85,7 +121,7 @@ jobs:
           cache-to: type=inline
 
       - name: Build and push Python 3.10 image
-        if: steps.check_py310.outputs.exists != '0'
+        if: steps.parse_versions.outputs.build_py310 == 'true' && steps.check_py310.outputs.exists != '0'
         uses: docker/build-push-action@v5
         with:
           context: .
