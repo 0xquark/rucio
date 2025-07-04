@@ -259,7 +259,7 @@ def run_test_directly(
     MOUNT_PATH = '/usr/local/src/rucio'
     scripts_to_run = ' && '.join([
         f'cd {MOUNT_PATH}',
-        './tools/test/test.sh' + (' -p' if tests else ''),
+            './tools/test/test.sh' + (' -p' if tests else ''),
     ])
 
     try:

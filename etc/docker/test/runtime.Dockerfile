@@ -60,7 +60,7 @@ FROM python as gfal2
             wget https://archives.boost.io/release/1.80.0/source/boost_1_80_0.tar.gz && \
             tar -xvzf boost_1_80_0.tar.gz && \
             cd boost_1_80_0 && \
-            ./bootstrap.sh --with-libraries=python --with-python=/usr/bin/python3.10 --prefix=/usr/ --libdir=/usr/local/lib && \
+            ./bootstrap.sh --with-libraries=python --with-python=/usr/bin/python3.10 --prefix=/usr --libdir=/usr/local/lib && \
             ./b2 --with-python --libdir=/usr/local/lib --link=shared && \
             cp /usr/local/src/boost_1_80_0/stage/lib/lib* /usr/lib64/ && \
             dnf install -y git dnf-plugins-core git rpm-build tree which cmake make gcc gcc-c++ && \
@@ -135,7 +135,7 @@ FROM python as rucio-runtime
     RUN chmod +x /usr/local/bin/entrypoint.sh
 
     # Set environment variable for source directory
-    ENV RUCIO_SOURCE_DIR="/rucio_source"
+    ENV RUCIO_SOURCE_DIR="/usr/local/src/rucio"
 
 FROM rucio-runtime as requirements
     # Install Python dependencies
@@ -166,7 +166,7 @@ FROM requirements as final
     RUN ldconfig
 
     # Create a volume mount point for source code
-    VOLUME /rucio_source
+    VOLUME /usr/local/src/rucio
 
     ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
     CMD ["httpd","-D","FOREGROUND"] 
