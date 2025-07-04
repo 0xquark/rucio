@@ -270,8 +270,9 @@ def run_test_directly(
         # Get current directory for mounting source code
         current_dir = os.path.abspath(os.path.curdir)
         
-        # Add RUCIO_SOURCE_DIR to environment
-        caseenv['RUCIO_SOURCE_DIR'] = '/rucio_source'
+        # Path inside container expected by scripts
+        MOUNT_PATH = '/usr/local/src/rucio'
+        caseenv['RUCIO_SOURCE_DIR'] = MOUNT_PATH
         
         # Running rucio container from given image with source code mounted
         run(
@@ -280,7 +281,7 @@ def run_test_directly(
             'run',
             '--rm',
             *pod_net_arg,
-            '-v', f"{current_dir}:/rucio_source:ro",
+            '-v', f"{current_dir}:{MOUNT_PATH}",
             *(env_args(caseenv)),
             image,
             'sh',
@@ -313,8 +314,9 @@ def run_with_httpd(
         # Get current directory for mounting source code
         current_dir = os.path.abspath(os.path.curdir)
         
-        # Add RUCIO_SOURCE_DIR to environment
-        caseenv['RUCIO_SOURCE_DIR'] = '/rucio_source'
+        # Path inside container expected by scripts
+        MOUNT_PATH = '/usr/local/src/rucio'
+        caseenv['RUCIO_SOURCE_DIR'] = MOUNT_PATH
         
         compose_override_content = yaml.dump({
             'services': {
