@@ -281,7 +281,8 @@ def run_test_directly(
             'run',
             '--rm',
             *pod_net_arg,
-            '-v', f"{current_dir}:{MOUNT_PATH}",
+            '-w', MOUNT_PATH,  # Set working directory explicitly
+            '-v', f"{current_dir}:{MOUNT_PATH}:rw",  # Mount as read-write
             *(env_args(caseenv)),
             image,
             'sh',
@@ -325,8 +326,9 @@ def run_with_httpd(
                     'image': image,
                     'environment': [f'{k}={v}' for k, v in caseenv.items()],
                     'volumes': [
-                        f"{current_dir}:{MOUNT_PATH}",
-                    ]
+                        f"{current_dir}:{MOUNT_PATH}:rw",
+                    ],
+                    'working_dir': MOUNT_PATH  # Set working directory explicitly
                 },
                 'ruciodb': {
                     'profiles': ['donotstart'],

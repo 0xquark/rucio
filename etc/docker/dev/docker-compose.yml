@@ -24,11 +24,12 @@ services:
       - ../../certs/ssh/ruciouser_sshkey.pub:/root/.ssh/ruciouser_sshkey.pub:z
       - ../../certs/ssh/ruciouser_sshkey:/root/.ssh/ruciouser_sshkey:z
       - ./rucio/idpsecrets.json:/opt/rucio/etc/idpsecrets.json:ro
-      - ../../../:/rucio_source:ro
+      - ../../../:/usr/local/src/rucio:rw
     environment:
       - REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt
-      - RUCIO_SOURCE_DIR=/rucio_source
+      - RUCIO_SOURCE_DIR=/usr/local/src/rucio
       - RDBMS
+    working_dir: /usr/local/src/rucio
 
   rucio:
     container_name: dev-rucio-1
@@ -48,11 +49,12 @@ services:
       - ../../certs/ssh/ruciouser_sshkey.pub:/root/.ssh/ruciouser_sshkey.pub:z
       - ../../certs/ssh/ruciouser_sshkey:/root/.ssh/ruciouser_sshkey:z
       - ./rucio/idpsecrets.json:/opt/rucio/etc/idpsecrets.json:ro
-      - ../../../:/rucio_source:ro
+      - ../../../:/usr/local/src/rucio:rw
     environment:
       - REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt
-      - RUCIO_SOURCE_DIR=/rucio_source
+      - RUCIO_SOURCE_DIR=/usr/local/src/rucio
       - RDBMS
+    working_dir: /usr/local/src/rucio
 
   # ------------------------------------------------------------------
   # Database, MQ, metrics, and other external services

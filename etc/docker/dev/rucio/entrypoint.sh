@@ -66,7 +66,7 @@ fi
 if [ -d "$RUCIO_SOURCE_DIR" ]; then
     echo "Installing Rucio from mounted source code at $RUCIO_SOURCE_DIR"
     cd "$RUCIO_SOURCE_DIR"
-    /opt/venv/bin/pip install --no-cache-dir -e .[oracle,postgresql,mysql,kerberos,saml,dev]
+    python3 -m pip install -e .[oracle,postgresql,mysql,kerberos,saml,dev]
     echo "Rucio installed successfully in editable mode"
 else
     echo "ERROR: Rucio source directory not found at $RUCIO_SOURCE_DIR"
