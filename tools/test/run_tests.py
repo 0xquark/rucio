@@ -238,6 +238,7 @@ def run_test_directly(
     pod_net_arg = ['--pod', pod] if use_podman else []
     scripts_to_run = ' && '.join(
         [
+            'pip install -e /rucio_source',  # Install Rucio from the mounted source code
             './tools/test/test.sh' + (' -p' if tests else ''),
         ]
     )
@@ -254,6 +255,13 @@ def run_test_directly(
             'run',
             '--rm',
             *pod_net_arg,
+            # Mount the source code from the PR
+            '-v', f"{os.path.abspath(os.curdir)}:/rucio_source:ro",
+            # Mount the necessary directories for Rucio to work
+            '-v', f"{os.path.abspath(os.curdir)}/tools:/opt/rucio/tools:Z",
+            '-v', f"{os.path.abspath(os.curdir)}/bin:/opt/rucio/bin:Z",
+            '-v', f"{os.path.abspath(os.curdir)}/lib:/opt/rucio/lib:Z",
+            '-v', f"{os.path.abspath(os.curdir)}/tests:/opt/rucio/tests:Z",
             *(env_args(caseenv)),
             image,
             'sh',
@@ -288,6 +296,15 @@ def run_with_httpd(
                 'rucio': {
                     'image': image,
                     'environment': [f'{k}={v}' for k, v in caseenv.items()],
+                    'volumes': [
+                        # Mount the current source code from the PR
+                        f"{os.path.abspath(os.curdir)}:/rucio_source:ro",
+                        # Mount the necessary directories for Rucio to work
+                        f"{os.path.abspath(os.curdir)}/tools:/opt/rucio/tools:Z",
+                        f"{os.path.abspath(os.curdir)}/bin:/opt/rucio/bin:Z",
+                        f"{os.path.abspath(os.curdir)}/lib:/opt/rucio/lib:Z",
+                        f"{os.path.abspath(os.curdir)}/tests:/opt/rucio/tests:Z",
+                    ],
                 },
                 'ruciodb': {
                     'profiles': ['donotstart'],
@@ -310,6 +327,9 @@ def run_with_httpd(
         try:
             # Start docker compose
             run('docker', 'compose', '-p', project, *up_down_args, 'up', '-d')
+
+            # Install Rucio from the mounted source code in development mode
+            run('docker', *namespace_args, 'exec', rucio_container, 'pip', 'install', '-e', '/rucio_source')
 
             # Running test.sh
             if tests:
@@ -354,7 +374,19 @@ def run_with_httpd(
 def main():
     obj = json.load(sys.stdin)
     cases = (obj["matrix"],) if isinstance(obj["matrix"], dict) else obj["matrix"]
-    run_tests(cases, obj["images"])
+    
+    # Use runtime images if provided
+    if "runtime_images" in obj:
+        images = {}
+        for case in cases:
+            python_version = case.get("PYTHON", "3.9")
+            if python_version in obj["runtime_images"]:
+                images[obj["runtime_images"][python_version]] = {"PYTHON": python_version}
+    else:
+        # Fallback to old behavior
+        images = obj["images"]
+    
+    run_tests(cases, images)
 
 
 if __name__ == "__main__":
