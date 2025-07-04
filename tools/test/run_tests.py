@@ -324,7 +324,7 @@ def run_with_httpd(
                     'image': image,
                     'environment': [f'{k}={v}' for k, v in caseenv.items()],
                     'volumes': [
-                        f"{current_dir}:/rucio_source:ro",
+                        f"{current_dir}:{MOUNT_PATH}",
                     ]
                 },
                 'ruciodb': {
