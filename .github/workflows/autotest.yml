@@ -159,8 +159,15 @@ jobs:
     outputs:
       branch: ${{ steps.branch.outputs.branch }}
       matrix: ${{ steps.matrix.outputs.matrix }}
+  
+  # Get or build runtime images
+  runtime_images:
+    runs-on: ubuntu-latest
+    name: Get Runtime Images
+    uses: ./.github/workflows/runtime_image.yml
+  
   test:
-    needs: setup
+    needs: [setup, runtime_images]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -168,23 +175,32 @@ jobs:
         cfg: ${{ fromJson(needs.setup.outputs.matrix) }}
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
-      - name: Build images
-        id: images
-        shell: bash
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Prepare test configuration
+        id: prepare_test
         run: |
-          docker login https://ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
-          i=0; until [ "$i" -ge 3 ]; do
-            IMAGES=$(echo '${{ toJson(matrix.cfg) }}' | ./tools/test/build_images.py \
-                --cache-repo ghcr.io/${{ github.repository }} \
-                --branch "${{ needs.setup.outputs.branch }}" ./etc/docker/test || echo "")
-            if [[ -n $IMAGES ]]; then break;
-            else
-              i=$((i+1)); sleep 5;
-              echo "::warning::Building images failed, retrying…"
-            fi
-          done
-          docker logout https://ghcr.io
-          if [[ -z "$IMAGES" ]]; then echo "::error::Building images failed ultimately"; exit 1; fi
-          echo "images=$IMAGES" >> $GITHUB_OUTPUT
-      - name: Run test with cfg
-        run: 'echo ''{"matrix": ${{ toJson(matrix.cfg) }}, "images": ${{ steps.images.outputs.images }} }'' | ./tools/test/run_tests.py'
+          # Get Python version from matrix configuration
+          PYTHON_VERSION="${{ matrix.cfg.PYTHON }}"
+          
+          # Set the appropriate runtime image based on Python version
+          if [ "$PYTHON_VERSION" == "3.9" ]; then
+            RUNTIME_IMAGE="${{ needs.runtime_images.outputs.py39_image }}"
+          elif [ "$PYTHON_VERSION" == "3.10" ]; then
+            RUNTIME_IMAGE="${{ needs.runtime_images.outputs.py310_image }}"
+          else
+            echo "Unsupported Python version: $PYTHON_VERSION"
+            exit 1
+          fi
+          
+          echo "runtime_image=$RUNTIME_IMAGE" >> $GITHUB_OUTPUT
+      
+      - name: Run tests
+        run: |
+          # Run tests with the runtime image
+          echo '{"matrix": ${{ toJson(matrix.cfg) }}, "runtime_image": "${{ steps.prepare_test.outputs.runtime_image }}"}' | ./tools/test/run_tests.py

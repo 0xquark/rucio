@@ -67,6 +67,11 @@ def stringify_dict(inp: dict):
 
 
 def find_image(images: dict, case: dict):
+    # If a runtime_image is specified, use it directly
+    if 'runtime_image' in case:
+        return case['runtime_image']
+    
+    # Otherwise use the traditional image lookup
     for image, idgroup in images.items():
         if matches(idgroup, case):
             return image
@@ -248,12 +253,14 @@ def run_test_directly(
             caseenv['TESTS'] = ' '.join(tests)
 
         # Running rucio container from given image with special entrypoint
+        # Mount the current directory as the source code
         run(
             'docker',
             *namespace_args,
             'run',
             '--rm',
             *pod_net_arg,
+            '-v', f'{os.getcwd()}:/rucio-source:ro',  # Mount source code
             *(env_args(caseenv)),
             image,
             'sh',
@@ -288,6 +295,10 @@ def run_with_httpd(
                 'rucio': {
                     'image': image,
                     'environment': [f'{k}={v}' for k, v in caseenv.items()],
+                    'volumes': [
+                        # Mount the current directory as the source code
+                        f"{os.getcwd()}:/rucio-source:ro",
+                    ],
                 },
                 'ruciodb': {
                     'profiles': ['donotstart'],
@@ -354,7 +365,13 @@ def run_with_httpd(
 def main():
     obj = json.load(sys.stdin)
     cases = (obj["matrix"],) if isinstance(obj["matrix"], dict) else obj["matrix"]
-    run_tests(cases, obj["images"])
+    # If runtime_image is provided directly in the input, use it
+    if "runtime_image" in obj:
+        for case in cases:
+            case["runtime_image"] = obj["runtime_image"]
+        run_tests(cases, {})
+    else:
+        run_tests(cases, obj["images"])
 
 
 if __name__ == "__main__":
