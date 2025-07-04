@@ -140,9 +140,6 @@ jobs:
     if: github.repository_owner == '0xquark' || github.event_name != 'schedule'
     name: Build Runtime Images
     uses: ./.github/workflows/runtime_image.yml
-    outputs:
-      py39_image: ${{ jobs.build_runtime_images.outputs.py39_image }}
-      py310_image: ${{ jobs.build_runtime_images.outputs.py310_image }}
   setup:
     if: github.repository_owner == 'rucio' || github.event_name != 'schedule'
     runs-on: ubuntu-latest
@@ -165,9 +162,16 @@ jobs:
           else
             echo "matrix=$(./tools/test/matrix_parser.py < ./etc/docker/test/matrix_nightly.yml)" >> $GITHUB_OUTPUT
           fi
+      - name: Set runtime image tags
+        id: runtime_images
+        run: |
+          echo "py39_image=${{ needs.runtime_images.outputs.py39_image }}" >> $GITHUB_OUTPUT
+          echo "py310_image=${{ needs.runtime_images.outputs.py310_image }}" >> $GITHUB_OUTPUT
     outputs:
       branch: ${{ steps.branch.outputs.branch }}
       matrix: ${{ steps.matrix.outputs.matrix }}
+      py39_image: ${{ steps.runtime_images.outputs.py39_image }}
+      py310_image: ${{ steps.runtime_images.outputs.py310_image }}
   test:
     needs: [runtime_images, setup]
     runs-on: ubuntu-latest
@@ -185,7 +189,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Run test with cfg
         env:
-          PY39_RUNTIME_IMAGE: ${{ needs.runtime_images.outputs.py39_image }}
-          PY310_RUNTIME_IMAGE: ${{ needs.runtime_images.outputs.py310_image }}
+          PY39_RUNTIME_IMAGE: ${{ needs.setup.outputs.py39_image }}
+          PY310_RUNTIME_IMAGE: ${{ needs.setup.outputs.py310_image }}
         run: |
-          echo '{"matrix": ${{ toJson(matrix.cfg) }}, "runtime_images": {"3.9": "${{ needs.runtime_images.outputs.py39_image }}", "3.10": "${{ needs.runtime_images.outputs.py310_image }}"} }' | ./tools/test/run_tests.py
+          echo '{"matrix": ${{ toJson(matrix.cfg) }}, "runtime_images": {"3.9": "${{ needs.setup.outputs.py39_image }}", "3.10": "${{ needs.setup.outputs.py310_image }}"} }' | ./tools/test/run_tests.py
