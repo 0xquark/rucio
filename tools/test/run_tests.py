@@ -256,11 +256,11 @@ def run_test_directly(
     tests: list[str],
 ):
     pod_net_arg = ['--pod', pod] if use_podman else []
-    scripts_to_run = ' && '.join(
-        [
-            './tools/test/test.sh' + (' -p' if tests else ''),
-        ]
-    )
+    MOUNT_PATH = '/usr/local/src/rucio'
+    scripts_to_run = ' && '.join([
+        f'cd {MOUNT_PATH}',
+        './tools/test/test.sh' + (' -p' if tests else ''),
+    ])
 
     try:
         if tests:
@@ -271,7 +271,6 @@ def run_test_directly(
         current_dir = os.path.abspath(os.path.curdir)
         
         # Path inside container expected by scripts
-        MOUNT_PATH = '/usr/local/src/rucio'
         caseenv['RUCIO_SOURCE_DIR'] = MOUNT_PATH
         
         # Running rucio container from given image with source code mounted
@@ -357,7 +356,8 @@ def run_with_httpd(
                 tests_env = ()
                 tests_arg = ()
 
-            run('docker', *namespace_args, 'exec', *tests_env, rucio_container, './tools/test/test.sh', *tests_arg)
+            run('docker', *namespace_args, 'exec', *tests_env, rucio_container,
+                'sh', '-c', f'cd {MOUNT_PATH} && ./tools/test/test.sh', *tests_arg)
 
             # if everything went through without an exception, mark this case as a success
             return True
