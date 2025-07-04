@@ -28,6 +28,7 @@ services:
     environment:
       - REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt
       - RUCIO_SOURCE_DIR=/usr/local/src/rucio
+      - PYTHONPATH=/usr/local/src/rucio/lib:/usr/local/src/rucio
       - RDBMS
     working_dir: /usr/local/src/rucio
 
@@ -53,6 +54,7 @@ services:
     environment:
       - REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt
       - RUCIO_SOURCE_DIR=/usr/local/src/rucio
+      - PYTHONPATH=/usr/local/src/rucio/lib:/usr/local/src/rucio
       - RDBMS
     working_dir: /usr/local/src/rucio
 

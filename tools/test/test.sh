@@ -40,42 +40,33 @@ function wait_for_database() {
     # Debug information
     echo "Current directory: $(pwd)"
     echo "PYTHONPATH: $PYTHONPATH"
-    echo "Python path:"
-    python3 -c "import sys; print(sys.path)"
     
-    # Use the rucio_init.py helper to ensure rucio is in the path
-    echo "Using rucio_init.py to ensure rucio is in the path"
-    python3 -c "import sys; sys.path.insert(0, '$SOURCE_PATH'); from tools.test.rucio_init import ensure_rucio_in_path; success = ensure_rucio_in_path(); print(f'Rucio in path: {success}')"
+    # Make sure lib directory is in PYTHONPATH
+    if [[ "$PYTHONPATH" != *"$SOURCE_PATH/lib"* ]]; then
+        export PYTHONPATH="$SOURCE_PATH/lib:$PYTHONPATH"
+        echo "Updated PYTHONPATH: $PYTHONPATH"
+    fi
     
-    # Try to import rucio with explicit path
-    python3 -c "import sys; sys.path.insert(0, '$SOURCE_PATH'); import rucio; print('Rucio imported successfully')" || {
-        echo "Failed to import rucio with explicit path"
-        # Try to find where rucio is installed
+    # Try to import rucio
+    if ! python3 -c "import rucio" 2>/dev/null; then
+        echo "Failed to import rucio module, creating symlink..."
         SITE_PACKAGES=$(python3 -c "import site; print(site.getsitepackages()[0])")
-        echo "Site packages: $SITE_PACKAGES"
-        echo "Looking for rucio in site packages:"
-        find "$SITE_PACKAGES" -name "rucio*" || echo "No rucio found in site packages"
-        
-        # Create a .pth file if it doesn't exist
-        if [ ! -f "$SITE_PACKAGES/rucio.pth" ]; then
-            echo "$SOURCE_PATH" > "$SITE_PACKAGES/rucio.pth"
-            echo "Created rucio.pth in $SITE_PACKAGES"
-        fi
-        
-        # Create a symlink if it doesn't exist
-        if [ -d "$SOURCE_PATH/lib/rucio" ] && [ ! -e "$SITE_PACKAGES/rucio" ]; then
+        if [ ! -L "$SITE_PACKAGES/rucio" ] && [ -d "$SOURCE_PATH/lib/rucio" ]; then
             ln -sf "$SOURCE_PATH/lib/rucio" "$SITE_PACKAGES/rucio"
             echo "Created symlink from $SITE_PACKAGES/rucio to $SOURCE_PATH/lib/rucio"
         fi
-    }
+        
+        # Create an empty __init__.py file in the lib directory if it doesn't exist
+        if [ ! -f "$SOURCE_PATH/lib/__init__.py" ]; then
+            touch "$SOURCE_PATH/lib/__init__.py"
+            echo "Created __init__.py in $SOURCE_PATH/lib"
+        fi
+    fi
     
-    # Set PYTHONPATH explicitly
-    export PYTHONPATH="$SOURCE_PATH:$PYTHONPATH"
-    
-    # Try the original import with retries
+    # Try the database connection with retries
     MAX_ATTEMPTS=30
     ATTEMPT=0
-    while ! python3 -c "import sys; sys.path.insert(0, '$SOURCE_PATH'); from tools.test.rucio_init import ensure_rucio_in_path; ensure_rucio_in_path(); from rucio.db.sqla.session import wait_for_database; wait_for_database()"
+    while ! python3 -c "import sys; sys.path.insert(0, '$SOURCE_PATH/lib'); from rucio.db.sqla.session import wait_for_database; wait_for_database()"
     do
         ATTEMPT=$((ATTEMPT+1))
         echo "Attempt $ATTEMPT of $MAX_ATTEMPTS to connect to database"

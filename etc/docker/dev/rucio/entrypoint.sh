@@ -70,23 +70,41 @@ fi
 # Install Rucio from mounted source in editable mode
 if [ -d "$RUCIO_SOURCE_DIR" ]; then
     echo "Installing Rucio from mounted source code at $RUCIO_SOURCE_DIR"
-    echo "Source directory contents:"
-    ls -la "$RUCIO_SOURCE_DIR"
     
     # Make sure we're in the source directory
     cd "$RUCIO_SOURCE_DIR"
     
-    # Install in editable mode
+    # Set up PYTHONPATH to include lib directory
+    export PYTHONPATH="$RUCIO_SOURCE_DIR/lib:$PYTHONPATH"
+    
+    # Create a symlink in site-packages
+    SITE_PACKAGES=$(python3 -c "import site; print(site.getsitepackages()[0])")
+    if [ ! -L "$SITE_PACKAGES/rucio" ] && [ -d "$RUCIO_SOURCE_DIR/lib/rucio" ]; then
+        echo "Creating symlink from $SITE_PACKAGES/rucio to $RUCIO_SOURCE_DIR/lib/rucio"
+        ln -sf "$RUCIO_SOURCE_DIR/lib/rucio" "$SITE_PACKAGES/rucio"
+    fi
+    
+    # Install in development mode
     python3 -m pip install -e .[oracle,postgresql,mysql,kerberos,saml,dev]
     
     # Verify installation
     echo "Checking if rucio module can be imported..."
-    python3 -c "import sys; print(sys.path); import rucio; print(f'Rucio module found at: {rucio.__file__}')" || echo "Failed to import rucio module"
-    
-    # Explicitly add to PYTHONPATH if needed
-    if [ -z "$PYTHONPATH" ] || [[ "$PYTHONPATH" != *"$RUCIO_SOURCE_DIR"* ]]; then
-        export PYTHONPATH="$RUCIO_SOURCE_DIR:$PYTHONPATH"
-        echo "Updated PYTHONPATH: $PYTHONPATH"
+    if python3 -c "import rucio; print(f'Rucio imported successfully from {rucio.__file__}')" 2>/dev/null; then
+        echo "Rucio module imported successfully"
+    else
+        echo "Failed to import rucio module, trying to fix..."
+        # Create an empty __init__.py file in the lib directory if it doesn't exist
+        if [ ! -f "$RUCIO_SOURCE_DIR/lib/__init__.py" ]; then
+            touch "$RUCIO_SOURCE_DIR/lib/__init__.py"
+            echo "Created __init__.py in $RUCIO_SOURCE_DIR/lib"
+        fi
+        
+        # Try again
+        if python3 -c "import sys; sys.path.insert(0, '$RUCIO_SOURCE_DIR/lib'); import rucio; print(f'Rucio imported successfully from {rucio.__file__}')" 2>/dev/null; then
+            echo "Rucio module imported successfully after fix"
+        else
+            echo "Still failed to import rucio module"
+        fi
     fi
     
     echo "Rucio installed successfully in editable mode"
@@ -97,33 +115,7 @@ fi
 
 update-ca-trust
 
-# Create a .pth file in the site-packages directory to ensure rucio is in the Python path
-SITE_PACKAGES=$(python3 -c "import site; print(site.getsitepackages()[0])")
-echo "$RUCIO_SOURCE_DIR" > "$SITE_PACKAGES/rucio.pth"
-echo "Created rucio.pth in $SITE_PACKAGES"
-
-# Create a symlink to the lib directory in site-packages
-if [ -d "$RUCIO_SOURCE_DIR/lib" ]; then
-    echo "Creating symlink from $SITE_PACKAGES/rucio to $RUCIO_SOURCE_DIR/lib/rucio"
-    if [ -d "$RUCIO_SOURCE_DIR/lib/rucio" ]; then
-        # Create symlink to the rucio module
-        ln -sf "$RUCIO_SOURCE_DIR/lib/rucio" "$SITE_PACKAGES/rucio"
-        echo "Symlink created successfully"
-        
-        # Verify the symlink
-        if [ -L "$SITE_PACKAGES/rucio" ]; then
-            echo "Symlink exists at $SITE_PACKAGES/rucio -> $(readlink -f $SITE_PACKAGES/rucio)"
-        else
-            echo "Failed to create symlink"
-        fi
-    else
-        echo "Error: $RUCIO_SOURCE_DIR/lib/rucio directory not found"
-    fi
-else
-    echo "Error: $RUCIO_SOURCE_DIR/lib directory not found"
-fi
-
-# Export PYTHONPATH for child processes
-export PYTHONPATH="$RUCIO_SOURCE_DIR:$PYTHONPATH"
+# Make sure PYTHONPATH is set for child processes
+export PYTHONPATH="$RUCIO_SOURCE_DIR/lib:$PYTHONPATH"
 
 exec "$@"
