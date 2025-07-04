@@ -187,4 +187,5 @@ jobs:
         env:
           PY39_RUNTIME_IMAGE: ${{ needs.runtime_images.outputs.py39_image }}
           PY310_RUNTIME_IMAGE: ${{ needs.runtime_images.outputs.py310_image }}
-        run: 'echo ''{"matrix": ${{ toJson(matrix.cfg) }}, "runtime_images": {"3.9": "${{ needs.runtime_images.outputs.py39_image }}", "3.10": "${{ needs.runtime_images.outputs.py310_image }}"} }' | ./tools/test/run_tests.py
+        run: |
+          echo '{"matrix": ${{ toJson(matrix.cfg) }}, "runtime_images": {"3.9": "${{ needs.runtime_images.outputs.py39_image }}", "3.10": "${{ needs.runtime_images.outputs.py310_image }}"} }' | ./tools/test/run_tests.py
