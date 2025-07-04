@@ -11,8 +11,6 @@ on:
         value: ${{ jobs.build_runtime_images.outputs.py310_image }}
   workflow_dispatch:
   push:
-    branches:
-      - master
     paths:
       - 'requirements/**'
       - 'etc/docker/test/runtime.Dockerfile'
