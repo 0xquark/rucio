@@ -257,9 +257,18 @@ def run_test_directly(
 ):
     pod_net_arg = ['--pod', pod] if use_podman else []
     MOUNT_PATH = '/usr/local/src/rucio'
+    
+    # Add debug script execution
+    debug_script = os.path.join(MOUNT_PATH, 'tools', 'test', 'debug_imports.py')
     scripts_to_run = ' && '.join([
         f'cd {MOUNT_PATH}',
-            './tools/test/test.sh' + (' -p' if tests else ''),
+        f'echo "Running debug script to check imports..."',
+        f'python3 {debug_script}',
+        f'echo "Setting up Python path explicitly..."',
+        f'export PYTHONPATH={MOUNT_PATH}:$PYTHONPATH',
+        f'echo "Updated PYTHONPATH: $PYTHONPATH"',
+        f'echo "Running tests..."',
+        './tools/test/test.sh' + (' -p' if tests else ''),
     ])
 
     try:
@@ -273,6 +282,11 @@ def run_test_directly(
         # Path inside container expected by scripts
         caseenv['RUCIO_SOURCE_DIR'] = MOUNT_PATH
         caseenv.setdefault('PYTHONPATH', MOUNT_PATH)
+        
+        # Make debug script executable
+        debug_script_local = os.path.join(current_dir, 'tools', 'test', 'debug_imports.py')
+        if os.path.exists(debug_script_local):
+            os.chmod(debug_script_local, 0o755)
         
         # Running rucio container from given image with source code mounted
         run(
@@ -352,6 +366,19 @@ def run_with_httpd(
             # Start docker compose
             run('docker', 'compose', '-p', project, *up_down_args, 'up', '-d')
 
+            # Run debug script first
+            debug_script = os.path.join(MOUNT_PATH, 'tools', 'test', 'debug_imports.py')
+            debug_script_local = os.path.join(current_dir, 'tools', 'test', 'debug_imports.py')
+            if os.path.exists(debug_script_local):
+                os.chmod(debug_script_local, 0o755)
+                
+            run('docker', *namespace_args, 'exec', rucio_container,
+                'sh', '-c', f'cd {MOUNT_PATH} && python3 {debug_script}')
+                
+            # Set PYTHONPATH explicitly
+            run('docker', *namespace_args, 'exec', rucio_container,
+                'sh', '-c', f'export PYTHONPATH={MOUNT_PATH}:$PYTHONPATH && echo "Updated PYTHONPATH: $PYTHONPATH"')
+
             # Running test.sh
             if tests:
                 tests_env = ('--env', 'TESTS=' + ' '.join(tests))
@@ -361,7 +388,7 @@ def run_with_httpd(
                 tests_arg = ()
 
             run('docker', *namespace_args, 'exec', *tests_env, rucio_container,
-                'sh', '-c', f'cd {MOUNT_PATH} && ./tools/test/test.sh', *tests_arg)
+                'sh', '-c', f'cd {MOUNT_PATH} && export PYTHONPATH={MOUNT_PATH}:$PYTHONPATH && ./tools/test/test.sh', *tests_arg)
 
             # if everything went through without an exception, mark this case as a success
             return True

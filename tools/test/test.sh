@@ -36,15 +36,59 @@ function wait_for_httpd() {
 
 function wait_for_database() {
     echo 'Waiting for database to be ready'
-    while ! python3 -c "from rucio.db.sqla.session import wait_for_database; wait_for_database()"
+    
+    # Debug information
+    echo "Current directory: $(pwd)"
+    echo "PYTHONPATH: $PYTHONPATH"
+    echo "Python path:"
+    python3 -c "import sys; print(sys.path)"
+    
+    # Use the rucio_init.py helper to ensure rucio is in the path
+    echo "Using rucio_init.py to ensure rucio is in the path"
+    python3 -c "import sys; sys.path.insert(0, '$SOURCE_PATH'); from tools.test.rucio_init import ensure_rucio_in_path; success = ensure_rucio_in_path(); print(f'Rucio in path: {success}')"
+    
+    # Try to import rucio with explicit path
+    python3 -c "import sys; sys.path.insert(0, '$SOURCE_PATH'); import rucio; print('Rucio imported successfully')" || {
+        echo "Failed to import rucio with explicit path"
+        # Try to find where rucio is installed
+        SITE_PACKAGES=$(python3 -c "import site; print(site.getsitepackages()[0])")
+        echo "Site packages: $SITE_PACKAGES"
+        echo "Looking for rucio in site packages:"
+        find "$SITE_PACKAGES" -name "rucio*" || echo "No rucio found in site packages"
+        
+        # Create a .pth file if it doesn't exist
+        if [ ! -f "$SITE_PACKAGES/rucio.pth" ]; then
+            echo "$SOURCE_PATH" > "$SITE_PACKAGES/rucio.pth"
+            echo "Created rucio.pth in $SITE_PACKAGES"
+        fi
+        
+        # Create a symlink if it doesn't exist
+        if [ -d "$SOURCE_PATH/lib/rucio" ] && [ ! -e "$SITE_PACKAGES/rucio" ]; then
+            ln -sf "$SOURCE_PATH/lib/rucio" "$SITE_PACKAGES/rucio"
+            echo "Created symlink from $SITE_PACKAGES/rucio to $SOURCE_PATH/lib/rucio"
+        fi
+    }
+    
+    # Set PYTHONPATH explicitly
+    export PYTHONPATH="$SOURCE_PATH:$PYTHONPATH"
+    
+    # Try the original import with retries
+    MAX_ATTEMPTS=30
+    ATTEMPT=0
+    while ! python3 -c "import sys; sys.path.insert(0, '$SOURCE_PATH'); from tools.test.rucio_init import ensure_rucio_in_path; ensure_rucio_in_path(); from rucio.db.sqla.session import wait_for_database; wait_for_database()"
     do
-        if (( SECONDS > 60 ))
+        ATTEMPT=$((ATTEMPT+1))
+        echo "Attempt $ATTEMPT of $MAX_ATTEMPTS to connect to database"
+        
+        if (( ATTEMPT >= MAX_ATTEMPTS ))
         then
-           echo 'Cannot access database'
+           echo 'Cannot access database after maximum attempts'
            exit 1
         fi
         sleep 1
     done
+    
+    echo "Database connection successful"
 }
 
 if [ "$SUITE" == "client" ]; then

@@ -14,6 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Print debug information
+echo "Current directory: $(pwd)"
+echo "RUCIO_SOURCE_DIR: $RUCIO_SOURCE_DIR"
+echo "PYTHONPATH: $PYTHONPATH"
+
 CFG_PATH="$RUCIO_SOURCE_DIR"/etc/docker/test/extra/
 if [ -z "$RUCIO_HOME" ]; then
     RUCIO_HOME=/opt/rucio
@@ -65,8 +70,25 @@ fi
 # Install Rucio from mounted source in editable mode
 if [ -d "$RUCIO_SOURCE_DIR" ]; then
     echo "Installing Rucio from mounted source code at $RUCIO_SOURCE_DIR"
+    echo "Source directory contents:"
+    ls -la "$RUCIO_SOURCE_DIR"
+    
+    # Make sure we're in the source directory
     cd "$RUCIO_SOURCE_DIR"
+    
+    # Install in editable mode
     python3 -m pip install -e .[oracle,postgresql,mysql,kerberos,saml,dev]
+    
+    # Verify installation
+    echo "Checking if rucio module can be imported..."
+    python3 -c "import sys; print(sys.path); import rucio; print(f'Rucio module found at: {rucio.__file__}')" || echo "Failed to import rucio module"
+    
+    # Explicitly add to PYTHONPATH if needed
+    if [ -z "$PYTHONPATH" ] || [[ "$PYTHONPATH" != *"$RUCIO_SOURCE_DIR"* ]]; then
+        export PYTHONPATH="$RUCIO_SOURCE_DIR:$PYTHONPATH"
+        echo "Updated PYTHONPATH: $PYTHONPATH"
+    fi
+    
     echo "Rucio installed successfully in editable mode"
 else
     echo "ERROR: Rucio source directory not found at $RUCIO_SOURCE_DIR"
@@ -74,5 +96,34 @@ else
 fi
 
 update-ca-trust
+
+# Create a .pth file in the site-packages directory to ensure rucio is in the Python path
+SITE_PACKAGES=$(python3 -c "import site; print(site.getsitepackages()[0])")
+echo "$RUCIO_SOURCE_DIR" > "$SITE_PACKAGES/rucio.pth"
+echo "Created rucio.pth in $SITE_PACKAGES"
+
+# Create a symlink to the lib directory in site-packages
+if [ -d "$RUCIO_SOURCE_DIR/lib" ]; then
+    echo "Creating symlink from $SITE_PACKAGES/rucio to $RUCIO_SOURCE_DIR/lib/rucio"
+    if [ -d "$RUCIO_SOURCE_DIR/lib/rucio" ]; then
+        # Create symlink to the rucio module
+        ln -sf "$RUCIO_SOURCE_DIR/lib/rucio" "$SITE_PACKAGES/rucio"
+        echo "Symlink created successfully"
+        
+        # Verify the symlink
+        if [ -L "$SITE_PACKAGES/rucio" ]; then
+            echo "Symlink exists at $SITE_PACKAGES/rucio -> $(readlink -f $SITE_PACKAGES/rucio)"
+        else
+            echo "Failed to create symlink"
+        fi
+    else
+        echo "Error: $RUCIO_SOURCE_DIR/lib/rucio directory not found"
+    fi
+else
+    echo "Error: $RUCIO_SOURCE_DIR/lib directory not found"
+fi
+
+# Export PYTHONPATH for child processes
+export PYTHONPATH="$RUCIO_SOURCE_DIR:$PYTHONPATH"
 
 exec "$@"
