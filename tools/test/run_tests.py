@@ -240,7 +240,7 @@ def run_test_directly(
         [
             # Create a writable copy of the source for pip install -e
             'cp -r /rucio_source /tmp/rucio_writable',
-            'pip install -e /tmp/rucio_writable',
+            'pip install --no-cache-dir -e /tmp/rucio_writable',
             # Change to the source directory so relative paths work
             'cd /rucio_source',
             './tools/test/test.sh' + (' -p' if tests else ''),
@@ -336,7 +336,7 @@ def run_with_httpd(
 
             # Create a writable copy of the source code and install Rucio from it
             run('docker', *namespace_args, 'exec', rucio_container, 'cp', '-r', '/rucio_source', '/tmp/rucio_writable')
-            run('docker', *namespace_args, 'exec', rucio_container, 'pip', 'install', '-e', '/tmp/rucio_writable')
+            run('docker', *namespace_args, 'exec', rucio_container, 'pip', 'install', '--no-cache-dir', '-e', '/tmp/rucio_writable')
 
             # Running test.sh from the source directory
             if tests:

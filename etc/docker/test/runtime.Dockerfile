@@ -127,6 +127,11 @@ FROM python as rucio-runtime
     COPY etc/certs/rucio_ca.pem /opt/rucio/etc/rucio_ca.pem
     COPY etc/certs/ruciouser.pem /opt/rucio/etc/ruciouser.pem
     COPY etc/certs/ruciouser.key.pem /opt/rucio/etc/ruciouser.key.pem
+    
+    # Create certs directory and symlink for compatibility
+    RUN mkdir -p /opt/rucio/etc/certs && \
+        ln -s /opt/rucio/etc/rucio_ca.pem /opt/rucio/etc/certs/rucio_ca.pem
+    
     RUN chmod 0400 /etc/grid-security/hostkey.pem && \
         chmod 0400 /opt/rucio/etc/ruciouser.key.pem
 

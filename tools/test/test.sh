@@ -16,6 +16,13 @@
 
 set -eo pipefail
 
+# Set Ruff cache to writable location
+export RUFF_CACHE_DIR=/tmp/.ruff_cache
+mkdir -p $RUFF_CACHE_DIR
+
+# Set Python cache to writable location
+export PYTHONDONTWRITEBYTECODE=1
+
 echo "* Using $(command -v python) $(python --version 2>&1) and $(command -v pip) $(pip --version 2>&1)"
 
 # Use RUCIO_SOURCE_DIR if set, otherwise fallback to default
