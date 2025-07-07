@@ -113,7 +113,8 @@ FROM python as rucio-runtime
     RUN mkdir -p /opt/rucio/lib /opt/rucio/bin /opt/rucio/tools /opt/rucio/etc /opt/rucio/tests && \
         mkdir -p /var/log/rucio/trace && \
         chmod -R 777 /var/log/rucio && \
-        mkdir -p /etc/grid-security
+        mkdir -p /etc/grid-security && \
+        mkdir -p /opt/rucio/etc/mail_templates
 
     # Set up Apache configuration
     COPY etc/docker/test/extra/httpd.conf /etc/httpd/conf/httpd.conf
@@ -134,6 +135,9 @@ FROM python as rucio-runtime
     
     RUN chmod 0400 /etc/grid-security/hostkey.pem && \
         chmod 0400 /opt/rucio/etc/ruciouser.key.pem
+
+    # Copy mail templates (needed for tests)
+    COPY etc/mail_templates/ /opt/rucio/etc/mail_templates/
 
     # Copy entrypoint script
     COPY etc/docker/dev/rucio/entrypoint.sh /usr/local/bin/entrypoint.sh

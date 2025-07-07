@@ -67,7 +67,37 @@ update-ca-trust
 # Install Rucio from the mounted source code if it exists and not already installed
 if [ -d "$RUCIO_SOURCE_DIR" ] && ! python -c "import rucio" &>/dev/null; then
     echo "Installing Rucio from mounted source code at $RUCIO_SOURCE_DIR"
-    pip install --no-cache-dir -e "$RUCIO_SOURCE_DIR"
+    
+    # Set environment variables to prevent file creation issues
+    export PYTHONDONTWRITEBYTECODE=1
+    export PIP_NO_CACHE_DIR=1
+    
+    # Clean up any existing .egg-info directory
+    rm -rf "$RUCIO_SOURCE_DIR/lib/rucio.egg-info" 2>/dev/null || true
+    
+    # Try direct editable install first
+    echo "Running pip install -e $RUCIO_SOURCE_DIR"
+    if pip install --no-cache-dir --no-build-isolation -e "$RUCIO_SOURCE_DIR" 2>/dev/null; then
+        echo "Editable install successful"
+    else
+        echo "Editable install failed, using alternative approach..."
+        
+        # Alternative: Add the library path directly to Python path
+        LIB_PATH="$RUCIO_SOURCE_DIR/lib"
+        PYTHON_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+        SITE_PACKAGES="/opt/venv/lib/python${PYTHON_VERSION}/site-packages"
+        
+        # Create a .pth file to include the Rucio lib directory
+        echo "$LIB_PATH" > "$SITE_PACKAGES/rucio-source.pth"
+        echo "Added $LIB_PATH to Python path via .pth file"
+        
+        # Verify the installation
+        if python -c "import rucio" 2>/dev/null; then
+            echo "Rucio import successful via path addition"
+        else
+            echo "WARNING: Rucio import still failing"
+        fi
+    fi
 fi
 
 exec "$@"
