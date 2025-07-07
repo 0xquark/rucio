@@ -265,6 +265,8 @@ def run_test_directly(
             '-v', f"{os.path.abspath(os.curdir)}/bin:/opt/rucio/bin:Z",
             '-v', f"{os.path.abspath(os.curdir)}/lib:/opt/rucio/lib:Z",
             '-v', f"{os.path.abspath(os.curdir)}/tests:/opt/rucio/tests:Z",
+            # Set the source directory environment variable
+            '--env', 'RUCIO_SOURCE_DIR=/rucio_source',
             *(env_args(caseenv)),
             image,
             'sh',
@@ -298,7 +300,7 @@ def run_with_httpd(
             'services': {
                 'rucio': {
                     'image': image,
-                    'environment': [f'{k}={v}' for k, v in caseenv.items()],
+                    'environment': [f'{k}={v}' for k, v in caseenv.items()] + ['RUCIO_SOURCE_DIR=/rucio_source'],
                     'volumes': [
                         # Mount the current source code from the PR
                         f"{os.path.abspath(os.curdir)}:/rucio_source:ro",
