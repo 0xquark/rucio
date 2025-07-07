@@ -38,28 +38,6 @@ if [ -f /tmp/userkey.pem ]; then
     chmod og-rwx "$RUCIO_HOME/etc/userkey.pem"
 fi
 
-echo "Copying additional configuration files from source"
-# Copy configuration files from mounted source if they exist
-if [ -d "$RUCIO_SOURCE_DIR/etc" ]; then
-    cp "$RUCIO_SOURCE_DIR/etc/automatix.json" "$RUCIO_HOME/etc/" 2>/dev/null || true
-    cp "$RUCIO_SOURCE_DIR/etc/google-cloud-storage-test.json" "$RUCIO_HOME/etc/" 2>/dev/null || true
-    cp "$RUCIO_SOURCE_DIR/etc/idpsecrets.json" "$RUCIO_HOME/etc/" 2>/dev/null || true
-    cp "$RUCIO_SOURCE_DIR/etc/rse_repository.json" "$RUCIO_HOME/etc/" 2>/dev/null || true
-    
-    # Copy mail templates
-    if [ -d "$RUCIO_SOURCE_DIR/etc/mail_templates" ]; then
-        mkdir -p "$RUCIO_HOME/etc/mail_templates"
-        # Copy all .tmpl files from mail_templates directory
-        find "$RUCIO_SOURCE_DIR/etc/mail_templates" -name "*.tmpl" -exec cp {} "$RUCIO_HOME/etc/mail_templates/" \; 2>/dev/null || true
-    fi
-    
-    # Copy tools test file
-    if [ -f "$RUCIO_SOURCE_DIR/tools/test.file.1000" ]; then
-        mkdir -p "$RUCIO_HOME/tools"
-        cp "$RUCIO_SOURCE_DIR/tools/test.file.1000" "$RUCIO_HOME/tools/" 2>/dev/null || true
-    fi
-fi
-
 echo "Generating alembic.ini and rucio.cfg"
 
 if [ -z "$RDBMS" ]; then
