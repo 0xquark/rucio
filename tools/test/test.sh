@@ -18,7 +18,7 @@ set -eo pipefail
 
 echo "* Using $(command -v python) $(python --version 2>&1) and $(command -v pip) $(pip --version 2>&1)"
 
-# Use RUCIO_SOURCE_DIR if set, otherwise fallback to the old default
+# Use RUCIO_SOURCE_DIR if set, otherwise fall back to hardcoded path
 SOURCE_PATH=${RUCIO_SOURCE_DIR:-/usr/local/src/rucio}
 CFG_PATH=$SOURCE_PATH/etc/docker/test/extra/
 if [ -z "$RUCIO_HOME" ]; then

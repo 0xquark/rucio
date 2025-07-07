@@ -251,6 +251,9 @@ def run_test_directly(
             caseenv = dict(caseenv)
             caseenv['TESTS'] = ' '.join(tests)
 
+        # Set the RUCIO_SOURCE_DIR to point to our mounted source code
+        caseenv['RUCIO_SOURCE_DIR'] = '/rucio_source'
+
         # Running rucio container from given image with special entrypoint
         run(
             'docker',
@@ -265,8 +268,6 @@ def run_test_directly(
             '-v', f"{os.path.abspath(os.curdir)}/bin:/opt/rucio/bin:Z",
             '-v', f"{os.path.abspath(os.curdir)}/lib:/opt/rucio/lib:Z",
             '-v', f"{os.path.abspath(os.curdir)}/tests:/opt/rucio/tests:Z",
-            # Set the source directory environment variable
-            '--env', 'RUCIO_SOURCE_DIR=/rucio_source',
             *(env_args(caseenv)),
             image,
             'sh',
@@ -296,11 +297,15 @@ def run_with_httpd(
 ) -> bool:
 
     with (NamedTemporaryFile() as compose_override_file):
+        # Set the RUCIO_SOURCE_DIR to point to our mounted source code
+        caseenv_with_source_dir = dict(caseenv)
+        caseenv_with_source_dir['RUCIO_SOURCE_DIR'] = '/rucio_source'
+        
         compose_override_content = yaml.dump({
             'services': {
                 'rucio': {
                     'image': image,
-                    'environment': [f'{k}={v}' for k, v in caseenv.items()] + ['RUCIO_SOURCE_DIR=/rucio_source'],
+                    'environment': [f'{k}={v}' for k, v in caseenv_with_source_dir.items()],
                     'volumes': [
                         # Mount the current source code from the PR
                         f"{os.path.abspath(os.curdir)}:/rucio_source:ro",
