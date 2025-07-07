@@ -238,7 +238,10 @@ def run_test_directly(
     pod_net_arg = ['--pod', pod] if use_podman else []
     scripts_to_run = ' && '.join(
         [
-            'pip install -e /rucio_source',  # Install Rucio from the mounted source code
+            'export PIP_CACHE_DIR=/tmp/pip-cache',  # Set pip cache directory
+            'export TMPDIR=/tmp/pip-build',  # Set temporary directory
+            'mkdir -p /tmp/pip-build /tmp/pip-cache',  # Create writable build and cache directories
+            'pip install --no-build-isolation -e /rucio_source',  # Install Rucio from the mounted source code
             './tools/test/test.sh' + (' -p' if tests else ''),
         ]
     )
@@ -329,7 +332,7 @@ def run_with_httpd(
             run('docker', 'compose', '-p', project, *up_down_args, 'up', '-d')
 
             # Install Rucio from the mounted source code in development mode
-            run('docker', *namespace_args, 'exec', rucio_container, 'pip', 'install', '-e', '/rucio_source')
+            run('docker', *namespace_args, 'exec', rucio_container, 'bash', '-c', 'export PIP_CACHE_DIR=/tmp/pip-cache && export TMPDIR=/tmp/pip-build && mkdir -p /tmp/pip-build /tmp/pip-cache && pip install --no-build-isolation -e /rucio_source')
 
             # Running test.sh
             if tests:
