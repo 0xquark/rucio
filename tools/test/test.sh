@@ -51,7 +51,15 @@ function wait_for_database() {
 if [ "$SUITE" == "client" ]; then
     tools/run_tests.sh -i
 
-    cp "$SOURCE_PATH"/etc/docker/test/extra/rucio_client.cfg "$SOURCE_PATH"/etc/rucio.cfg
+    # Copy configuration to writable location in original RUCIO_HOME
+    cp "$SOURCE_PATH"/etc/docker/test/extra/rucio_client.cfg "$RUCIO_HOME"/etc/rucio.cfg
+    
+    # Create a symlink in the source directory to point to the writable etc directory
+    # so that when RUCIO_HOME changes to SOURCE_PATH, etc files are still writable
+    if [ ! -d "$SOURCE_PATH/etc" ]; then
+        ln -s "$RUCIO_HOME/etc" "$SOURCE_PATH/etc"
+    fi
+    
     srchome
     tools/pytest.sh -v --tb=short tests/test_clients.py tests/test_bin_rucio.py tests/test_module_import.py
 
