@@ -135,7 +135,7 @@ FROM python as rucio-runtime
     RUN chmod +x /usr/local/bin/entrypoint.sh
 
     # Set environment variable for source directory
-    ENV RUCIO_SOURCE_DIR="/usr/local/src/rucio"
+    ENV RUCIO_SOURCE_DIR="/rucio_source"
 
 FROM rucio-runtime as requirements
     # Install Python dependencies
