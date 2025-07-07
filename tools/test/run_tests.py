@@ -241,6 +241,8 @@ def run_test_directly(
             # Create a writable copy of the source for pip install -e
             'cp -r /rucio_source /tmp/rucio_writable',
             'pip install -e /tmp/rucio_writable',
+            # Change to the source directory so relative paths work
+            'cd /rucio_source',
             './tools/test/test.sh' + (' -p' if tests else ''),
         ]
     )
@@ -298,6 +300,8 @@ def run_with_httpd(
                 'rucio': {
                     'image': image,
                     'environment': [f'{k}={v}' for k, v in caseenv.items()],
+                    'working_dir': '/rucio_source',
+                    'entrypoint': ['/rucio_source/etc/docker/dev/rucio/entrypoint.sh'],
                     'volumes': [
                         # Mount the current source code from the PR as read-only
                         f"{os.path.abspath(os.curdir)}:/rucio_source:ro",
@@ -334,15 +338,13 @@ def run_with_httpd(
             run('docker', *namespace_args, 'exec', rucio_container, 'cp', '-r', '/rucio_source', '/tmp/rucio_writable')
             run('docker', *namespace_args, 'exec', rucio_container, 'pip', 'install', '-e', '/tmp/rucio_writable')
 
-            # Running test.sh
+            # Running test.sh from the source directory
             if tests:
-                tests_env = ('--env', 'TESTS=' + ' '.join(tests))
-                tests_arg = ('-p', )
+                test_command = f'TESTS="{" ".join(tests)}" ./tools/test/test.sh -p'
             else:
-                tests_env = ()
-                tests_arg = ()
+                test_command = './tools/test/test.sh'
 
-            run('docker', *namespace_args, 'exec', *tests_env, rucio_container, './tools/test/test.sh', *tests_arg)
+            run('docker', *namespace_args, 'exec', rucio_container, 'sh', '-c', test_command)
 
             # if everything went through without an exception, mark this case as a success
             return True
