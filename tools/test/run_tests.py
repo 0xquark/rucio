@@ -238,9 +238,8 @@ def run_test_directly(
     pod_net_arg = ['--pod', pod] if use_podman else []
     scripts_to_run = ' && '.join(
         [
-            # Create a writable copy of the source for pip install -e
-            'cp -r /rucio_source /tmp/rucio_writable',
-            'pip install --no-cache-dir -e /tmp/rucio_writable',
+            # Install Rucio directly from the mounted source
+            'pip install --no-cache-dir -e /rucio_source',
             # Change to the source directory so relative paths work
             'cd /rucio_source',
             './tools/test/test.sh' + (' -p' if tests else ''),
@@ -259,8 +258,8 @@ def run_test_directly(
             'run',
             '--rm',
             *pod_net_arg,
-            # Mount the source code from the PR as read-only
-            '-v', f"{os.path.abspath(os.curdir)}:/rucio_source:ro",
+            # Mount the source code from the PR as writable
+            '-v', f"{os.path.abspath(os.curdir)}:/rucio_source",
             # Mount the necessary directories for Rucio to work
             '-v', f"{os.path.abspath(os.curdir)}/tools:/opt/rucio/tools:Z",
             '-v', f"{os.path.abspath(os.curdir)}/bin:/opt/rucio/bin:Z",
@@ -303,8 +302,8 @@ def run_with_httpd(
                     'working_dir': '/rucio_source',
                     'entrypoint': ['/rucio_source/etc/docker/dev/rucio/entrypoint.sh'],
                     'volumes': [
-                        # Mount the current source code from the PR as read-only
-                        f"{os.path.abspath(os.curdir)}:/rucio_source:ro",
+                        # Mount the current source code from the PR as writable
+                        f"{os.path.abspath(os.curdir)}:/rucio_source",
                         # Mount the necessary directories for Rucio to work
                         f"{os.path.abspath(os.curdir)}/tools:/opt/rucio/tools:Z",
                         f"{os.path.abspath(os.curdir)}/bin:/opt/rucio/bin:Z",
@@ -334,9 +333,8 @@ def run_with_httpd(
             # Start docker compose
             run('docker', 'compose', '-p', project, *up_down_args, 'up', '-d')
 
-            # Create a writable copy of the source code and install Rucio from it
-            run('docker', *namespace_args, 'exec', rucio_container, 'cp', '-r', '/rucio_source', '/tmp/rucio_writable')
-            run('docker', *namespace_args, 'exec', rucio_container, 'pip', 'install', '--no-cache-dir', '-e', '/tmp/rucio_writable')
+            # Install Rucio directly from the mounted source
+            run('docker', *namespace_args, 'exec', rucio_container, 'pip', 'install', '--no-cache-dir', '-e', '/rucio_source')
 
             # Running test.sh from the source directory
             if tests:
