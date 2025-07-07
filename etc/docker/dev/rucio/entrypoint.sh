@@ -49,7 +49,8 @@ if [ -d "$RUCIO_SOURCE_DIR/etc" ]; then
     # Copy mail templates
     if [ -d "$RUCIO_SOURCE_DIR/etc/mail_templates" ]; then
         mkdir -p "$RUCIO_HOME/etc/mail_templates"
-        cp -r "$RUCIO_SOURCE_DIR/etc/mail_templates/"* "$RUCIO_HOME/etc/mail_templates/" 2>/dev/null || true
+        # Copy all .tmpl files from mail_templates directory
+        find "$RUCIO_SOURCE_DIR/etc/mail_templates" -name "*.tmpl" -exec cp {} "$RUCIO_HOME/etc/mail_templates/" \; 2>/dev/null || true
     fi
     
     # Copy tools test file
