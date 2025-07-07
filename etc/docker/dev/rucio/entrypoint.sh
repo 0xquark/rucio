@@ -14,10 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Remove trailing slash if present to avoid double slashes
-RUCIO_SOURCE_DIR="${RUCIO_SOURCE_DIR%/}"
 CFG_PATH="$RUCIO_SOURCE_DIR/etc/docker/test/extra"
-
 if [ -z "$RUCIO_HOME" ]; then
     RUCIO_HOME=/opt/rucio
 fi
@@ -44,36 +41,24 @@ fi
 echo "Generating alembic.ini and rucio.cfg"
 
 if [ -z "$RDBMS" ]; then
-    if [ -f "$CFG_PATH/rucio_default.cfg" ]; then
-        cp "$CFG_PATH/rucio_default.cfg" $RUCIO_HOME/etc/rucio.cfg
-    fi
-    if [ -f "$CFG_PATH/alembic_default.ini" ]; then
-        cp "$CFG_PATH/alembic_default.ini" $RUCIO_HOME/etc/alembic.ini
-    fi
+    cp "$CFG_PATH/rucio_default.cfg" $RUCIO_HOME/etc/rucio.cfg
+    cp "$CFG_PATH/alembic_default.ini" $RUCIO_HOME/etc/alembic.ini
 
 elif [ "$RDBMS" == "oracle" ]; then
     generate_rucio_cfg "$CFG_PATH/rucio_oracle.cfg" $RUCIO_HOME/etc/rucio.cfg
-    if [ -f "$CFG_PATH/alembic_oracle.ini" ]; then
-        cp "$CFG_PATH/alembic_oracle.ini" $RUCIO_HOME/etc/alembic.ini
-    fi
+    cp "$CFG_PATH/alembic_oracle.ini" $RUCIO_HOME/etc/alembic.ini
 
 elif [ "$RDBMS" == "mysql8" ]; then
     generate_rucio_cfg "$CFG_PATH/rucio_mysql8.cfg" $RUCIO_HOME/etc/rucio.cfg
-    if [ -f "$CFG_PATH/alembic_mysql8.ini" ]; then
-        cp "$CFG_PATH/alembic_mysql8.ini" $RUCIO_HOME/etc/alembic.ini
-    fi
+    cp "$CFG_PATH/alembic_mysql8.ini" $RUCIO_HOME/etc/alembic.ini
 
 elif [ "$RDBMS" == "sqlite" ]; then
     generate_rucio_cfg "$CFG_PATH/rucio_sqlite.cfg" $RUCIO_HOME/etc/rucio.cfg
-    if [ -f "$CFG_PATH/alembic_sqlite.ini" ]; then
-        cp "$CFG_PATH/alembic_sqlite.ini" $RUCIO_HOME/etc/alembic.ini
-    fi
+    cp "$CFG_PATH/alembic_sqlite.ini" $RUCIO_HOME/etc/alembic.ini
 
 elif [ "$RDBMS" == "postgres14" ]; then
     generate_rucio_cfg "$CFG_PATH/rucio_postgres14.cfg" $RUCIO_HOME/etc/rucio.cfg
-    if [ -f "$CFG_PATH/alembic_postgres14.ini" ]; then
-        cp "$CFG_PATH/alembic_postgres14.ini" $RUCIO_HOME/etc/alembic.ini
-    fi
+    cp "$CFG_PATH/alembic_postgres14.ini" $RUCIO_HOME/etc/alembic.ini
 
 fi
 
@@ -82,11 +67,9 @@ update-ca-trust
 # Install Rucio from the mounted source code if it exists and not already installed
 if [ -d "$RUCIO_SOURCE_DIR" ] && ! python -c "import rucio" &>/dev/null; then
     echo "Installing Rucio from mounted source code at $RUCIO_SOURCE_DIR"
-    # Use temporary directories for pip build and cache to avoid read-only filesystem issues
-    export PIP_CACHE_DIR=/tmp/pip-cache
-    export TMPDIR=/tmp/pip-build
-    mkdir -p /tmp/pip-build /tmp/pip-cache
-    pip install --no-build-isolation -e "$RUCIO_SOURCE_DIR"
+    # Create a writable copy of the source code
+    cp -r "$RUCIO_SOURCE_DIR" /tmp/rucio_writable
+    pip install -e /tmp/rucio_writable
 fi
 
 exec "$@"

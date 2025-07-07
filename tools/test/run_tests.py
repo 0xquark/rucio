@@ -238,10 +238,9 @@ def run_test_directly(
     pod_net_arg = ['--pod', pod] if use_podman else []
     scripts_to_run = ' && '.join(
         [
-            'export PIP_CACHE_DIR=/tmp/pip-cache',  # Set pip cache directory
-            'export TMPDIR=/tmp/pip-build',  # Set temporary directory
-            'mkdir -p /tmp/pip-build /tmp/pip-cache',  # Create writable build and cache directories
-            'pip install --no-build-isolation -e /rucio_source',  # Install Rucio from the mounted source code
+            # Create a writable copy of the source for pip install -e
+            'cp -r /rucio_source /tmp/rucio_writable',
+            'pip install -e /tmp/rucio_writable',
             './tools/test/test.sh' + (' -p' if tests else ''),
         ]
     )
@@ -251,9 +250,6 @@ def run_test_directly(
             caseenv = dict(caseenv)
             caseenv['TESTS'] = ' '.join(tests)
 
-        # Set the RUCIO_SOURCE_DIR to point to our mounted source code
-        caseenv['RUCIO_SOURCE_DIR'] = '/rucio_source'
-
         # Running rucio container from given image with special entrypoint
         run(
             'docker',
@@ -261,7 +257,7 @@ def run_test_directly(
             'run',
             '--rm',
             *pod_net_arg,
-            # Mount the source code from the PR
+            # Mount the source code from the PR as read-only
             '-v', f"{os.path.abspath(os.curdir)}:/rucio_source:ro",
             # Mount the necessary directories for Rucio to work
             '-v', f"{os.path.abspath(os.curdir)}/tools:/opt/rucio/tools:Z",
@@ -297,17 +293,13 @@ def run_with_httpd(
 ) -> bool:
 
     with (NamedTemporaryFile() as compose_override_file):
-        # Set the RUCIO_SOURCE_DIR to point to our mounted source code
-        caseenv_with_source_dir = dict(caseenv)
-        caseenv_with_source_dir['RUCIO_SOURCE_DIR'] = '/rucio_source'
-        
         compose_override_content = yaml.dump({
             'services': {
                 'rucio': {
                     'image': image,
-                    'environment': [f'{k}={v}' for k, v in caseenv_with_source_dir.items()],
+                    'environment': [f'{k}={v}' for k, v in caseenv.items()],
                     'volumes': [
-                        # Mount the current source code from the PR
+                        # Mount the current source code from the PR as read-only
                         f"{os.path.abspath(os.curdir)}:/rucio_source:ro",
                         # Mount the necessary directories for Rucio to work
                         f"{os.path.abspath(os.curdir)}/tools:/opt/rucio/tools:Z",
@@ -338,8 +330,9 @@ def run_with_httpd(
             # Start docker compose
             run('docker', 'compose', '-p', project, *up_down_args, 'up', '-d')
 
-            # Install Rucio from the mounted source code in development mode
-            run('docker', *namespace_args, 'exec', rucio_container, 'bash', '-c', 'export PIP_CACHE_DIR=/tmp/pip-cache && export TMPDIR=/tmp/pip-build && mkdir -p /tmp/pip-build /tmp/pip-cache && pip install --no-build-isolation -e /rucio_source')
+            # Create a writable copy of the source code and install Rucio from it
+            run('docker', *namespace_args, 'exec', rucio_container, 'cp', '-r', '/rucio_source', '/tmp/rucio_writable')
+            run('docker', *namespace_args, 'exec', rucio_container, 'pip', 'install', '-e', '/tmp/rucio_writable')
 
             # Running test.sh
             if tests:
