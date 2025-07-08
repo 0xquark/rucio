@@ -21,6 +21,28 @@ fi
 
 mkdir -p "$RUCIO_HOME/etc"
 
+# Generate certificates if they don't exist (needed for mounting source etc/ dir)
+if [ ! -f "$RUCIO_HOME/etc/rucio_ca.pem" ] || [ ! -f "$RUCIO_HOME/etc/ruciouser.pem" ] || [ ! -f "$RUCIO_HOME/etc/ruciouser.key.pem" ]; then
+    echo "Generating test certificates..."
+    cd "$RUCIO_SOURCE_DIR/etc/certs"
+    bash generate.sh
+    
+    # Copy generated certificates to the expected location
+    cp rucio_ca.pem "$RUCIO_HOME/etc/"
+    cp ruciouser.pem "$RUCIO_HOME/etc/"
+    cp ruciouser.key.pem "$RUCIO_HOME/etc/"
+    cp ruciouser.certkey.pem "$RUCIO_HOME/etc/"
+    
+    # Set proper permissions
+    chmod 0400 "$RUCIO_HOME/etc/ruciouser.key.pem"
+    
+    # Create certs subdirectory and symlink for compatibility
+    mkdir -p "$RUCIO_HOME/etc/certs"
+    ln -sf "$RUCIO_HOME/etc/rucio_ca.pem" "$RUCIO_HOME/etc/certs/rucio_ca.pem"
+    
+    echo "Test certificates generated successfully"
+fi
+
 generate_rucio_cfg(){
   	local override=$1
   	local destination=$2
