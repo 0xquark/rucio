@@ -265,7 +265,12 @@ def run_test_directly(
             '-v', f"{os.path.abspath(os.curdir)}/bin:/opt/rucio/bin:Z",
             '-v', f"{os.path.abspath(os.curdir)}/lib:/opt/rucio/lib:Z",
             '-v', f"{os.path.abspath(os.curdir)}/tests:/opt/rucio/tests:Z",
-            '-v', f"{os.path.abspath(os.curdir)}/etc:/opt/rucio/etc:Z",
+            # Mount specific etc subdirectories instead of the entire etc to preserve certificates
+            '-v', f"{os.path.abspath(os.curdir)}/etc/mail_templates:/opt/rucio/etc/mail_templates:Z",
+            '-v', f"{os.path.abspath(os.curdir)}/etc/automatix.json:/opt/rucio/etc/automatix.json:Z",
+            '-v', f"{os.path.abspath(os.curdir)}/etc/google-cloud-storage-test.json:/opt/rucio/etc/google-cloud-storage-test.json:Z",
+            '-v', f"{os.path.abspath(os.curdir)}/etc/idpsecrets.json:/opt/rucio/etc/idpsecrets.json:Z",
+            '-v', f"{os.path.abspath(os.curdir)}/etc/rse_repository.json:/opt/rucio/etc/rse_repository.json:Z",
             *(env_args(caseenv)),
             image,
             'sh',
@@ -310,7 +315,12 @@ def run_with_httpd(
                         f"{os.path.abspath(os.curdir)}/bin:/opt/rucio/bin:Z",
                         f"{os.path.abspath(os.curdir)}/lib:/opt/rucio/lib:Z",
                         f"{os.path.abspath(os.curdir)}/tests:/opt/rucio/tests:Z",
-                        f"{os.path.abspath(os.curdir)}/etc:/opt/rucio/etc:Z",
+                        # Mount specific etc subdirectories instead of the entire etc to preserve certificates
+                        f"{os.path.abspath(os.curdir)}/etc/mail_templates:/opt/rucio/etc/mail_templates:Z",
+                        f"{os.path.abspath(os.curdir)}/etc/automatix.json:/opt/rucio/etc/automatix.json:Z",
+                        f"{os.path.abspath(os.curdir)}/etc/google-cloud-storage-test.json:/opt/rucio/etc/google-cloud-storage-test.json:Z",
+                        f"{os.path.abspath(os.curdir)}/etc/idpsecrets.json:/opt/rucio/etc/idpsecrets.json:Z",
+                        f"{os.path.abspath(os.curdir)}/etc/rse_repository.json:/opt/rucio/etc/rse_repository.json:Z",
                     ],
                 },
                 'ruciodb': {
