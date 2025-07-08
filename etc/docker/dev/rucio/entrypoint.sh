@@ -95,11 +95,11 @@ if [ -d "$RUCIO_SOURCE_DIR" ] && ! python -c "import rucio" &>/dev/null; then
         if [ -f "$file" ]; then
             filename=$(basename "$file")
             target="$RUCIO_HOME/etc/$filename"
-            if [ -e "$target" ]; then
-                rm -f "$target"
-            fi
-            ln -sf "$file" "$target"
-            echo "Symlinked: $target -> $file"
+                         if [ -e "$target" ]; then
+                 rm -f "$target" 2>/dev/null || true
+             fi
+             ln -sf "$file" "$target"
+             echo "Symlinked: $target -> $file"
         fi
     done
     
