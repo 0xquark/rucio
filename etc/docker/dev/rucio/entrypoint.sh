@@ -71,14 +71,20 @@ if [ -d "$RUCIO_SOURCE_DIR" ] && ! python -c "import rucio" &>/dev/null; then
     # Set environment variables to prevent file creation issues
     export PYTHONDONTWRITEBYTECODE=1
     export PIP_NO_CACHE_DIR=1
+    export RUFF_CACHE_DIR=/tmp/.ruff_cache
     
     # Clean up any existing .egg-info directory
     rm -rf "$RUCIO_SOURCE_DIR/lib/rucio.egg-info" 2>/dev/null || true
     
-    # Try direct editable install first
-    echo "Running pip install -e $RUCIO_SOURCE_DIR"
-    if pip install --no-cache-dir --no-build-isolation -e "$RUCIO_SOURCE_DIR" 2>/dev/null; then
-        echo "Editable install successful"
+    # Change to source directory for setup_rucio.py installation
+    cd "$RUCIO_SOURCE_DIR"
+    
+    # Try installing with setup_rucio.py and all necessary extras first
+    echo "Running pip install with setup_rucio.py and extras [oracle,postgresql,mysql,kerberos,saml,dev]"
+    if pip install --no-cache-dir --no-build-isolation -e ".[oracle,postgresql,mysql,kerberos,saml,dev]" 2>/dev/null; then
+        echo "Installation with extras successful"
+    elif pip install --no-cache-dir --no-build-isolation -e . 2>/dev/null; then
+        echo "Basic editable install successful"
     else
         echo "Editable install failed, using alternative approach..."
         
@@ -98,6 +104,9 @@ if [ -d "$RUCIO_SOURCE_DIR" ] && ! python -c "import rucio" &>/dev/null; then
             echo "WARNING: Rucio import still failing"
         fi
     fi
+    
+    # Return to original working directory
+    cd /opt/rucio
 fi
 
 exec "$@"
