@@ -95,11 +95,12 @@ if [ -d "$RUCIO_SOURCE_DIR" ] && ! python -c "import rucio" &>/dev/null; then
         if [ -f "$file" ]; then
             filename=$(basename "$file")
             target="$RUCIO_HOME/etc/$filename"
-                         if [ -e "$target" ]; then
-                 rm -f "$target" 2>/dev/null || true
-             fi
-             ln -sf "$file" "$target"
-             echo "Symlinked: $target -> $file"
+            # Remove existing file/symlink to avoid circular links and "device busy" errors
+            if [ -e "$target" ] || [ -L "$target" ]; then
+                rm -f "$target"
+            fi
+            ln -sf "$file" "$target"
+            echo "Symlinked: $target -> $file"
         fi
     done
     
@@ -108,7 +109,8 @@ if [ -d "$RUCIO_SOURCE_DIR" ] && ! python -c "import rucio" &>/dev/null; then
     for tool in test.file.1000 bootstrap.py reset_database.py merge_rucio_configs.py; do
         if [ -f "$RUCIO_SOURCE_DIR/tools/$tool" ]; then
             target="$RUCIO_HOME/tools/$tool"
-            if [ -e "$target" ]; then
+            # Remove existing file/symlink to avoid circular links
+            if [ -e "$target" ] || [ -L "$target" ]; then
                 rm -f "$target"
             fi
             ln -sf "$RUCIO_SOURCE_DIR/tools/$tool" "$target"
