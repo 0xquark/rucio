@@ -64,49 +64,16 @@ fi
 
 update-ca-trust
 
-# Install Rucio from the mounted source code if it exists and not already installed
+# Install Rucio from the mounted source code if not already installed
 if [ -d "$RUCIO_SOURCE_DIR" ] && ! python -c "import rucio" &>/dev/null; then
     echo "Installing Rucio from mounted source code at $RUCIO_SOURCE_DIR"
     
     # Set environment variables to prevent file creation issues
     export PYTHONDONTWRITEBYTECODE=1
     export PIP_NO_CACHE_DIR=1
-    export RUFF_CACHE_DIR=/tmp/.ruff_cache
     
-    # Clean up any existing .egg-info directory
-    rm -rf "$RUCIO_SOURCE_DIR/lib/rucio.egg-info" 2>/dev/null || true
-    
-    # Change to source directory for setup_rucio.py installation
-    cd "$RUCIO_SOURCE_DIR"
-    
-    # Try installing with setup_rucio.py and all necessary extras first
-    echo "Running pip install with setup_rucio.py and extras [oracle,postgresql,mysql,kerberos,saml,dev]"
-    if pip install --no-cache-dir --no-build-isolation -e ".[oracle,postgresql,mysql,kerberos,saml,dev]" 2>/dev/null; then
-        echo "Installation with extras successful"
-    elif pip install --no-cache-dir --no-build-isolation -e . 2>/dev/null; then
-        echo "Basic editable install successful"
-    else
-        echo "Editable install failed, using alternative approach..."
-        
-        # Alternative: Add the library path directly to Python path
-        LIB_PATH="$RUCIO_SOURCE_DIR/lib"
-        PYTHON_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-        SITE_PACKAGES="/opt/venv/lib/python${PYTHON_VERSION}/site-packages"
-        
-        # Create a .pth file to include the Rucio lib directory
-        echo "$LIB_PATH" > "$SITE_PACKAGES/rucio-source.pth"
-        echo "Added $LIB_PATH to Python path via .pth file"
-        
-        # Verify the installation
-        if python -c "import rucio" 2>/dev/null; then
-            echo "Rucio import successful via path addition"
-        else
-            echo "WARNING: Rucio import still failing"
-        fi
-    fi
-    
-    # Return to original working directory
-    cd /opt/rucio
+    # Install Rucio with all its data files
+    pip install --no-cache-dir -e "$RUCIO_SOURCE_DIR"
 fi
 
 exec "$@"

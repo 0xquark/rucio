@@ -34,9 +34,9 @@ packages = find_packages(where='lib')
 description = "Rucio Package"
 data_files = [
     ('rucio/', ['requirements/requirements.server.txt']),
-    ('rucio/etc/', glob.glob('etc/*.template')),
+    ('rucio/etc/', glob.glob('etc/*.template') + glob.glob('etc/*.json')),
     ('rucio/etc/web', glob.glob('etc/web/*.template')),
-    ('rucio/tools/', ['tools/bootstrap.py', 'tools/reset_database.py', 'tools/merge_rucio_configs.py']),
+    ('rucio/tools/', ['tools/bootstrap.py', 'tools/reset_database.py', 'tools/merge_rucio_configs.py', 'tools/test.file.1000']),
     ('rucio/etc/mail_templates/', glob.glob('etc/mail_templates/*.tmpl')),
 ]
 scripts = glob.glob('bin/rucio*')
