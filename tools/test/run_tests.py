@@ -265,6 +265,7 @@ def run_test_directly(
             '-v', f"{os.path.abspath(os.curdir)}/bin:/opt/rucio/bin:Z",
             '-v', f"{os.path.abspath(os.curdir)}/lib:/opt/rucio/lib:Z",
             '-v', f"{os.path.abspath(os.curdir)}/tests:/opt/rucio/tests:Z",
+            '-v', f"{os.path.abspath(os.curdir)}/etc:/opt/rucio/etc:Z",
             *(env_args(caseenv)),
             image,
             'sh',
@@ -309,6 +310,7 @@ def run_with_httpd(
                         f"{os.path.abspath(os.curdir)}/bin:/opt/rucio/bin:Z",
                         f"{os.path.abspath(os.curdir)}/lib:/opt/rucio/lib:Z",
                         f"{os.path.abspath(os.curdir)}/tests:/opt/rucio/tests:Z",
+                        f"{os.path.abspath(os.curdir)}/etc:/opt/rucio/etc:Z",
                     ],
                 },
                 'ruciodb': {

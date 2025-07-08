@@ -75,57 +75,8 @@ if [ -d "$RUCIO_SOURCE_DIR" ] && ! python -c "import rucio" &>/dev/null; then
     # Install Rucio with editable mode (source code changes visible immediately)
     pip install --no-cache-dir -e "$RUCIO_SOURCE_DIR"
     
-    # Note: editable installs do NOT install data_files, so we need to symlink them manually
-    # Create symlinks from source to expected locations (so any PR changes are immediately visible)
-    echo "Creating symlinks to data files from source (editable installs don't include data_files)"
-    
-    # Symlink mail templates directory
-    if [ -d "$RUCIO_SOURCE_DIR/etc/mail_templates" ]; then
-        mkdir -p "$RUCIO_HOME/etc"
-        if [ -e "$RUCIO_HOME/etc/mail_templates" ]; then
-            rm -rf "$RUCIO_HOME/etc/mail_templates"
-        fi
-        ln -sf "$RUCIO_SOURCE_DIR/etc/mail_templates" "$RUCIO_HOME/etc/mail_templates"
-        echo "Symlinked mail_templates: $RUCIO_HOME/etc/mail_templates -> $RUCIO_SOURCE_DIR/etc/mail_templates"
-    fi
-    
-    # Symlink individual JSON and template files
-    mkdir -p "$RUCIO_HOME/etc"
-    for file in "$RUCIO_SOURCE_DIR/etc"/*.json "$RUCIO_SOURCE_DIR/etc"/*.template; do
-        if [ -f "$file" ]; then
-            filename=$(basename "$file")
-            target="$RUCIO_HOME/etc/$filename"
-            # Remove existing file/symlink to avoid circular links and "device busy" errors
-            if [ -e "$target" ] || [ -L "$target" ]; then
-                rm -f "$target"
-            fi
-            ln -sf "$file" "$target"
-            echo "Symlinked: $target -> $file"
-        fi
-    done
-    
-    # Symlink tools directory (or create and symlink individual files)
-    mkdir -p "$RUCIO_HOME/tools"
-    for tool in test.file.1000 bootstrap.py reset_database.py merge_rucio_configs.py; do
-        if [ -f "$RUCIO_SOURCE_DIR/tools/$tool" ]; then
-            target="$RUCIO_HOME/tools/$tool"
-            # Remove existing file/symlink to avoid circular links
-            if [ -e "$target" ] || [ -L "$target" ]; then
-                rm -f "$target"
-            fi
-            ln -sf "$RUCIO_SOURCE_DIR/tools/$tool" "$target"
-            echo "Symlinked: $target -> $RUCIO_SOURCE_DIR/tools/$tool"
-        fi
-    done
-    
-    # Debug: Verify the symlinks were created correctly
-    echo "DEBUG: Verifying symlinked files exist:"
-    echo "DEBUG: Checking $RUCIO_HOME/etc/mail_templates/rule_approval_request.tmpl"
-    ls -la "$RUCIO_HOME/etc/mail_templates/rule_approval_request.tmpl" 2>/dev/null || echo "DEBUG: rule_approval_request.tmpl NOT FOUND"
-    echo "DEBUG: Checking $RUCIO_HOME/etc/automatix.json"
-    ls -la "$RUCIO_HOME/etc/automatix.json" 2>/dev/null || echo "DEBUG: automatix.json NOT FOUND"
-    echo "DEBUG: Checking $RUCIO_HOME/etc/google-cloud-storage-test.json"
-    ls -la "$RUCIO_HOME/etc/google-cloud-storage-test.json" 2>/dev/null || echo "DEBUG: google-cloud-storage-test.json NOT FOUND"
+    # Note: editable installs do NOT install data_files, but we mount etc/ and tools/ directly
+    echo "Using mounted etc/ and tools/ directories from source (no symlinks needed)"
 fi
 
 exec "$@"
