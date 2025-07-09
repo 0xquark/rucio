@@ -64,18 +64,4 @@ fi
 
 update-ca-trust
 
-# Install Rucio from the mounted source code if not already installed
-if [ -d "$RUCIO_SOURCE_DIR" ] && ! python -c "import rucio" &>/dev/null; then
-    echo "Installing Rucio from mounted source code at $RUCIO_SOURCE_DIR"
-    
-    # Set environment variables to prevent file creation issues
-    export PYTHONDONTWRITEBYTECODE=1
-    export PIP_NO_CACHE_DIR=1
-    
-    # Install Rucio with editable mode (source code changes visible immediately)
-    pip install --no-cache-dir -e "$RUCIO_SOURCE_DIR"
-    
-    echo "Rucio installed from mounted source code"
-fi
-
 exec "$@"
