@@ -260,7 +260,6 @@ def run_test_directly(
             *pod_net_arg,
             # Mount the source code from the PR as writable
             '-v', f"{os.path.abspath(os.curdir)}:/rucio_source",
-            # Mount the necessary directories for Rucio to work
             '-v', f"{os.path.abspath(os.curdir)}/tools:/opt/rucio/tools:Z",
             '-v', f"{os.path.abspath(os.curdir)}/bin:/opt/rucio/bin:Z",
             '-v', f"{os.path.abspath(os.curdir)}/lib:/opt/rucio/lib:Z",
@@ -310,7 +309,6 @@ def run_with_httpd(
                     'volumes': [
                         # Mount the current source code from the PR as writable
                         f"{os.path.abspath(os.curdir)}:/rucio_source",
-                        # Mount the necessary directories for Rucio to work
                         f"{os.path.abspath(os.curdir)}/tools:/opt/rucio/tools:Z",
                         f"{os.path.abspath(os.curdir)}/bin:/opt/rucio/bin:Z",
                         f"{os.path.abspath(os.curdir)}/lib:/opt/rucio/lib:Z",
@@ -350,11 +348,13 @@ def run_with_httpd(
 
             # Running test.sh from the source directory
             if tests:
-                test_command = f'TESTS="{" ".join(tests)}" ./tools/test/test.sh -p'
+                tests_env = ('--env', 'TESTS=' + ' '.join(tests))
+                tests_arg = ('-p', )
             else:
-                test_command = './tools/test/test.sh'
+                tests_env = ()
+                tests_arg = ()
 
-            run('docker', *namespace_args, 'exec', rucio_container, 'sh', '-c', test_command)
+            run('docker', *namespace_args, 'exec', *tests_env, rucio_container, './tools/test/test.sh', *tests_arg)
 
             # if everything went through without an exception, mark this case as a success
             return True
