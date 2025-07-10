@@ -137,7 +137,7 @@ jobs:
             ${{ env.PYRIGHT_CURRENT_REPORT }}
   # Build runtime images for tests
   runtime_images:
-    if: github.repository_owner == '0xquark' || github.event_name != 'schedule'
+    if: github.event_name != 'schedule'
     name: Build Runtime Images
     uses: ./.github/workflows/runtime_image.yml
   setup:
