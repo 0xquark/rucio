@@ -1,6 +1,8 @@
 name: Cleanup Runtime Images
 
 on:
+  pull_request:
+    branches: [ master ] # testing
   schedule:
     # Clean untagged images every 7 days (Sundays at 02:00 UTC)
     - cron: '0 2 * * 0'
