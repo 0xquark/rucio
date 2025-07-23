@@ -133,10 +133,10 @@ jobs:
       - name: Initialize tests
         shell: bash
         run: |
-          docker exec -t dev-rucio-1 cp /rucio_source/etc/rse-accounts.cfg.template /rucio_source/etc/rse-accounts.cfg
-          docker exec -t dev-rucio-1 tools/run_tests.sh -ir
+          docker exec -t dev-rucio-1 bash -c "cd /rucio_source && cp etc/rse-accounts.cfg.template etc/rse-accounts.cfg"
+          docker exec -t dev-rucio-1 bash -c "cd /rucio_source && tools/test/run_tests.py -ir"
       - name: Run integration tests
-        run: docker exec -t dev-rucio-1 tools/run_tests.sh -ir
+        run: docker exec -t dev-rucio-1 tools/test/run_tests.py -ir
       - name: File Upload/Download Test
         run: docker exec -t dev-rucio-1 tools/pytest.sh -v --tb=short tests/test_rucio_server.py
       - name: UploadClient Test
