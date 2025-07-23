@@ -135,7 +135,7 @@ jobs:
           sed -i 's;image: .*rucio-dev.*;image: ${{ needs.runtime_images.outputs.py39_image }};' $GITHUB_WORKSPACE/dev/rucio/etc/docker/dev/docker-compose.yml
       - name: Start containers
         run: docker compose -f $GITHUB_WORKSPACE/dev/rucio/etc/docker/dev/docker-compose.yml --profile storage --profile externalmetadata --profile iam up -d
-      - name: Install rucio in editable mode and Initialize tests
+      - name: Install rucio in editable mode and Initialize / Run tests
         run: |
           docker exec -t dev-rucio-1 bash -c "
             set -e
