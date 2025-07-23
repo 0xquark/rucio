@@ -107,6 +107,7 @@ FROM python AS rucio-runtime
         gfal2-devel \
         nodejs npm \
         glibc-langpack-en \
+        xrootd-client \
         git
 
     # Set up directories and permissions for mounting source code
