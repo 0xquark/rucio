@@ -109,6 +109,7 @@ FROM python AS rucio-runtime
         glibc-langpack-en \
         xrootd-client \
         git \
+        swig \
         gmp-devel \
         krb5-devel \
         libxml2-devel \
@@ -119,6 +120,7 @@ FROM python AS rucio-runtime
         nmap-ncat \
         openssh-clients \
         openssl-devel \
+        python3-m2crypto \
         rsync \
         unzip \
         vim \
@@ -168,7 +170,7 @@ FROM rucio-runtime AS requirements
         python3 -m pip --no-cache-dir install --upgrade setuptools wheel && \
         python3 -m pip --no-cache-dir install --upgrade -r /tmp/requirements/requirements.server.txt -r /tmp/requirements/requirements.dev.txt
     RUN curl https://rclone.org/install.sh | bash
-
+    
 FROM requirements AS final
 
     COPY --from=gfal2 /usr/include/gfal2 /usr/include/gfal2
