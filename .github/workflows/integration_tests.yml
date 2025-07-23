@@ -125,7 +125,8 @@ jobs:
       - name: Set runtime image in Docker Compose
         shell: bash
         run: |
-          sed -i 's;image: .*rucio-dev.*;image: ${{ needs.runtime_images.outputs.py39_image }};' dev/rucio/etc/docker/dev/docker-compose.yml
+          docker image ls
+          sed -i 's;image: .*rucio-dev.*;image: ${{ needs.runtime_images.outputs.py39_image }};' $GITHUB_WORKSPACE/dev/rucio/etc/docker/dev/docker-compose.yml
       - name: Start containers
         run: docker compose -f $GITHUB_WORKSPACE/dev/rucio/etc/docker/dev/docker-compose.yml --profile storage --profile externalmetadata --profile iam up -d
       - name: Install rucio in editable mode and Initialize tests
