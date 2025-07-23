@@ -122,6 +122,12 @@ jobs:
           tags: ${{ needs.runtime_images.outputs.py39_image }}
           outputs: type=docker
         continue-on-error: false
+      - name: Pull all required images
+        shell: bash
+        run: |
+          docker login https://ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+          docker compose -f $GITHUB_WORKSPACE/dev/rucio/etc/docker/dev/docker-compose.yml --profile storage --profile externalmetadata --profile iam pull
+          docker logout https://ghcr.io
       - name: Set runtime image in Docker Compose
         shell: bash
         run: |
