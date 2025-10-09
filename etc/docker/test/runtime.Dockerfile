@@ -189,6 +189,7 @@ FROM requirements AS final
 
     WORKDIR /opt/rucio
     RUN ldconfig
+    RUN [ -e /usr/bin/python ] || ln -s /usr/bin/python3 /usr/bin/python
 
     # Create a volume mount point for source code
     VOLUME /opt/rucio/lib

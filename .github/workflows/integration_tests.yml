@@ -144,7 +144,8 @@ jobs:
           docker exec -t dev-rucio-1 bash -c "
             set -e
             cd /rucio_source
-            cp etc/rse-accounts.cfg.template etc/rse-accounts.cfg
+            cp etc/rse-accounts.cfg.template /opt/rucio/etc/rse-accounts.cfg
+            ln -sf /usr/bin/python3 /usr/bin/python || true
             pip install --no-cache-dir -e /rucio_source
             tools/run_tests.sh -ir
           "
