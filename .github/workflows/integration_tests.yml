@@ -148,7 +148,7 @@ jobs:
             cp etc/rse-accounts.cfg.template /opt/rucio/etc/rse-accounts.cfg.template
             cp etc/rse_repository.json /opt/rucio/etc/rse_repository.json
             pip install --no-cache-dir -e /rucio_source
-            tools/run_tests.sh -ir
+            tools/run_tests.sh -i -r
           "
       - name: File Upload/Download Test
         run: docker exec -t dev-rucio-1 tools/pytest.sh -v --tb=short tests/test_rucio_server.py
