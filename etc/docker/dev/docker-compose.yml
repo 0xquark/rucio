@@ -14,23 +14,24 @@ services:
       - client
     volumes:
       - ../../certs/rucio_ca.pem:/etc/grid-security/certificates/5fca1cb1.0:ro
-      - ../../certs/rucio_ca.pem:/opt/rucio/etc/rucio_ca.pem:ro
+      - ../../certs/rucio_ca.pem:${RUCIO_HOME:-/opt/rucio}/etc/rucio_ca.pem:ro
       - ../../certs/rucio_ca.pem:/etc/pki/ca-trust/source/anchors/rucio_ca.pem:ro
       - ../../certs/hostcert_rucio.pem:/etc/grid-security/hostcert.pem:z
       - ../../certs/hostcert_rucio.key.pem:/etc/grid-security/hostkey.pem:z
       - ../../certs/ruciouser.pem:/tmp/usercert.pem:z
       - ../../certs/ruciouser.key.pem:/tmp/userkey.pem:z
-      - ../../certs/ruciouser.certkey.pem:/opt/rucio/etc/usercertkey.pem:z
+      - ../../certs/ruciouser.certkey.pem:${RUCIO_HOME:-/opt/rucio}/etc/usercertkey.pem:z
       - ../../certs/ssh/ruciouser_sshkey.pub:/root/.ssh/ruciouser_sshkey.pub:z
       - ../../certs/ssh/ruciouser_sshkey:/root/.ssh/ruciouser_sshkey:z
-      - ./rucio/idpsecrets.json:/opt/rucio/etc/idpsecrets.json:ro
-      - ../../../tools:/opt/rucio/tools:Z
-      - ../../../bin:/opt/rucio/bin:Z
-      - ../../../lib:/opt/rucio/lib:Z
-      - ../../../tests:/opt/rucio/tests:Z
+      - ./rucio/idpsecrets.json:${RUCIO_HOME:-/opt/rucio}/etc/idpsecrets.json:ro
+      - ../../../tools:${RUCIO_HOME:-/opt/rucio}/tools:Z
+      - ../../../bin:${RUCIO_HOME:-/opt/rucio}/bin:Z
+      - ../../../lib:${RUCIO_HOME:-/opt/rucio}/lib:Z
+      - ../../../tests:${RUCIO_HOME:-/opt/rucio}/tests:Z
       - ../../../:/rucio_source:Z
     environment:
       - REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt
+      - RUCIO_HOME=${RUCIO_HOME:-/opt/rucio}
       - RUCIO_SOURCE_DIR=/rucio_source
       - RDBMS
 
@@ -42,23 +43,24 @@ services:
     command: ["httpd","-D","FOREGROUND"]
     volumes:
       - ../../certs/rucio_ca.pem:/etc/grid-security/certificates/5fca1cb1.0:ro
-      - ../../certs/rucio_ca.pem:/opt/rucio/etc/rucio_ca.pem:ro
+      - ../../certs/rucio_ca.pem:${RUCIO_HOME:-/opt/rucio}/etc/rucio_ca.pem:ro
       - ../../certs/rucio_ca.pem:/etc/pki/ca-trust/source/anchors/rucio_ca.pem:ro
       - ../../certs/hostcert_rucio.pem:/etc/grid-security/hostcert.pem:z
       - ../../certs/hostcert_rucio.key.pem:/etc/grid-security/hostkey.pem:z
       - ../../certs/ruciouser.pem:/tmp/usercert.pem:z
       - ../../certs/ruciouser.key.pem:/tmp/userkey.pem:z
-      - ../../certs/ruciouser.certkey.pem:/opt/rucio/etc/usercertkey.pem:z
+      - ../../certs/ruciouser.certkey.pem:${RUCIO_HOME:-/opt/rucio}/etc/usercertkey.pem:z
       - ../../certs/ssh/ruciouser_sshkey.pub:/root/.ssh/ruciouser_sshkey.pub:z
       - ../../certs/ssh/ruciouser_sshkey:/root/.ssh/ruciouser_sshkey:z
-      - ./rucio/idpsecrets.json:/opt/rucio/etc/idpsecrets.json:ro
-      - ../../../tools:/opt/rucio/tools:Z
-      - ../../../bin:/opt/rucio/bin:Z
-      - ../../../lib:/opt/rucio/lib:Z
-      - ../../../tests:/opt/rucio/tests:Z
+      - ./rucio/idpsecrets.json:${RUCIO_HOME:-/opt/rucio}/etc/idpsecrets.json:ro
+      - ../../../tools:${RUCIO_HOME:-/opt/rucio}/tools:Z
+      - ../../../bin:${RUCIO_HOME:-/opt/rucio}/bin:Z
+      - ../../../lib:${RUCIO_HOME:-/opt/rucio}/lib:Z
+      - ../../../tests:${RUCIO_HOME:-/opt/rucio}/tests:Z
       - ../../../:/rucio_source
     environment:
       - REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt
+      - RUCIO_HOME=${RUCIO_HOME:-/opt/rucio}
       - RUCIO_SOURCE_DIR=/rucio_source
       - RDBMS
       - DEV_PROFILES
