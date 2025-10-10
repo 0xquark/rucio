@@ -137,6 +137,8 @@ jobs:
       - name: Start containers
         run: |
           export DEV_PROFILES=storage,externalmetadata,iam
+          export RUCIO_HOME=/rucio_source
+          export RUCIO_SOURCE_DIR=/rucio_source
           docker compose -f $GITHUB_WORKSPACE/dev/rucio/etc/docker/dev/docker-compose.yml --profile storage --profile externalmetadata --profile iam up -d
       - name: Initialize tests
         shell: bash
