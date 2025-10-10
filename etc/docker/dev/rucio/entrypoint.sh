@@ -62,6 +62,16 @@ elif [ "$RDBMS" == "postgres14" ]; then
 
 fi
 
+# Update Apache configuration to use the correct RUCIO_HOME path
+echo "Updating Apache configuration for RUCIO_HOME=$RUCIO_HOME"
+if [ -f /etc/httpd/conf.d/rucio.conf ]; then
+    # Update the WSGIScriptAlias path to use the current RUCIO_HOME
+    sed -i "s|WSGIScriptAlias.*main.py|WSGIScriptAlias /  $RUCIO_HOME/lib/rucio/web/rest/main.py|g" /etc/httpd/conf.d/rucio.conf
+    # Update the SSL CA certificate path
+    sed -i "s|SSLCACertificateFile.*rucio_ca.pem|SSLCACertificateFile $RUCIO_HOME/etc/rucio_ca.pem|g" /etc/httpd/conf.d/rucio.conf
+    echo "Updated Apache configuration to use $RUCIO_HOME"
+fi
+
 update-ca-trust
 
 exec "$@"
