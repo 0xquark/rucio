@@ -145,6 +145,8 @@ jobs:
             set -e
             cd /rucio_source
             cp etc/rse-accounts.cfg.template /opt/rucio/etc/rse-accounts.cfg
+            cp etc/rse-accounts.cfg.template /opt/rucio/etc/rse-accounts.cfg.template
+            cp etc/rse_repository.json /opt/rucio/etc/rse_repository.json
             pip install --no-cache-dir -e /rucio_source
             tools/run_tests.sh -ir
           "
