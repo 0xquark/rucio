@@ -147,6 +147,7 @@ jobs:
             cp etc/rse-accounts.cfg.template /opt/rucio/etc/rse-accounts.cfg
             cp etc/rse-accounts.cfg.template /opt/rucio/etc/rse-accounts.cfg.template
             cp etc/rse_repository.json /opt/rucio/etc/rse_repository.json
+            cp etc/rclone-init.cfg /opt/rucio/etc/rclone-init.cfg
             
             # Setup SSH keys in the expected locations (path issue fix)
             mkdir -p /root/.ssh
