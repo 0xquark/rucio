@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 from datetime import datetime
 from hashlib import sha256
 from os import urandom
@@ -71,7 +72,11 @@ def build_database() -> None:
     models.register_models(engine)
 
     # Put the database under version control
-    alembic_cfg = Config(config_get('alembic', 'cfg'))
+    # Check for ALEMBIC_CONFIG environment variable first, then fall back to config file
+    alembic_config_path = os.environ.get('ALEMBIC_CONFIG')
+    if not alembic_config_path:
+        alembic_config_path = config_get('alembic', 'cfg')
+    alembic_cfg = Config(alembic_config_path)
     command.stamp(alembic_cfg, "head")
 
 

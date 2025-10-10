@@ -130,7 +130,7 @@ else
         rm -f /tmp/rucio.db
     fi
 
-    tools/reset_database.py
+    ALEMBIC_CONFIG="$RUCIO_HOME/etc/alembic.ini" tools/reset_database.py
 
     if [ $? != 0 ]; then
         echo 'Failed to reset the database!'
