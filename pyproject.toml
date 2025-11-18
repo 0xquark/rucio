@@ -195,3 +195,7 @@ quote-annotations = true
 [tool.setuptools.packages.find]
 where = ["lib"]
 include = ["rucio*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "rucio.vcsversion.VERSION" }
+
